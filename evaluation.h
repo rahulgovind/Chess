@@ -8,13 +8,14 @@ void Engine::EvaluateAllPlayer1()
     EvaluateAllPlayer1Raw();
 
     bool check = CheckIfCheck1();
-    RemoveIllegalMoves1();
 
+    EvaluateCastle1();
+    EvaluateEnPassant1();
+    RemoveIllegalMoves1();
     int totalsize = 0;
     for(int i=1;i<=16;i++)
         if(player1_current[i].first>=0)
             totalsize+=player1_possible[i].size();
-
     if(totalsize==0)
         if(check)
             game_status = CHECKMATE_PLAYER1;
@@ -32,9 +33,10 @@ void Engine::EvaluateAllPlayer1()
 void Engine::EvaluateAllPlayer2()
 {
     EvaluateAllPlayer2Raw();
-
     bool check = CheckIfCheck2();
 
+    EvaluateCastle2();
+    EvaluateEnPassant2();
     RemoveIllegalMoves2();
 
     int totalsize = 0;
@@ -183,35 +185,40 @@ void Engine::RemoveIllegalMoves2()
         }
     }
 }
+
+//Evaluates each possible move individually
 void Engine::EvaluatePawns1()
 {
-    for(int i=1;i<=8;i++)
+    for(int i=1;i<=16;i++)
     {
-        player1_possible[i].clear();
-        int x = player1_current[i].first;
-        int y = player1_current[i].second;
-
-        if(x>=0 && y>=0)
+        if(map_vector_to_board1[i]==1)
         {
-            if(y+1<8)
-            {
-                //Normal move
-                if(board_matrix[x + (y+1)*8]==0)
-                {
-                    player1_possible[i].push_back(make_pair(x, y+1));
-                    //Double move
-                    if(y==1)
-                        if(board_matrix[x+(y+2)*8]==0)
-                            player1_possible[i].push_back(make_pair(x, y+2));
-                }
+            player1_possible[i].clear();
+            int x = player1_current[i].first;
+            int y = player1_current[i].second;
 
-                //Crose move to capture
-                if(x+1<8)
-                    if(board_matrix[(x+1)+(y+1)*8]<0)
-                        player1_possible[i].push_back(make_pair(x+1, y+1));
-                if(x-1>=0)
-                    if(board_matrix[(x-1)+(y+1)*8]<0)
-                        player1_possible[i].push_back(make_pair(x-1, y+1));
+            if(x>=0 && y>=0)
+            {
+                if(y+1<8)
+                {
+                    //Normal move
+                    if(board_matrix[x + (y+1)*8]==0)
+                    {
+                        player1_possible[i].push_back(make_pair(x, y+1));
+                        //Double move
+                        if(y==1)
+                            if(board_matrix[x+(y+2)*8]==0)
+                                player1_possible[i].push_back(make_pair(x, y+2));
+                    }
+
+                    //Crose move to capture
+                    if(x+1<8)
+                        if(board_matrix[(x+1)+(y+1)*8]<0)
+                            player1_possible[i].push_back(make_pair(x+1, y+1));
+                    if(x-1>=0)
+                        if(board_matrix[(x-1)+(y+1)*8]<0)
+                            player1_possible[i].push_back(make_pair(x-1, y+1));
+                }
             }
         }
     }
@@ -220,240 +227,281 @@ void Engine::EvaluatePawns1()
 
 void Engine::EvaluatePawns2()
 {
-     for(int i=1;i<=8;i++)
+     for(int i=1;i<=16;i++)
     {
-        player2_possible[i].clear();
-        int x = player2_current[i].first;
-        int y = player2_current[i].second;
-
-        if(x>=0 && y>=0)
+        if(map_vector_to_board2[i] == -1)
         {
-            if(y-1<8)
+            player2_possible[i].clear();
+            int x = player2_current[i].first;
+            int y = player2_current[i].second;
+
+            if(x>=0 && y>=0)
             {
-                //Normal move
-                if(board_matrix[x + (y-1)*8]==0)
+                if(y-1<8)
                 {
-                    player2_possible[i].push_back(make_pair(x, y-1));
+                    //Normal move
+                    if(board_matrix[x + (y-1)*8]==0)
+                    {
+                        player2_possible[i].push_back(make_pair(x, y-1));
 
-                    //Double move
-                    if(y==6)
-                        if(board_matrix[x+(y-2)*8]==0)
-                            player2_possible[i].push_back(make_pair(x, y-2));
+                        //Double move
+                        if(y==6)
+                            if(board_matrix[x+(y-2)*8]==0)
+                                player2_possible[i].push_back(make_pair(x, y-2));
+                    }
+
+                    //Crose move to capture
+                    if(x+1<8)
+                        if(board_matrix[(x+1)+(y-1)*8]>0)
+                            player2_possible[i].push_back(make_pair(x+1, y-1));
+                    if(x-1>=0)
+                        if(board_matrix[(x-1)+(y-1)*8]>0)
+                            player2_possible[i].push_back(make_pair(x-1, y-1));
                 }
-
-                //Crose move to capture
-                if(x+1<8)
-                    if(board_matrix[(x+1)+(y-1)*8]>0)
-                        player2_possible[i].push_back(make_pair(x+1, y-1));
-                if(x-1>=0)
-                    if(board_matrix[(x-1)+(y-1)*8]>0)
-                        player2_possible[i].push_back(make_pair(x-1, y-1));
             }
         }
     }
 }
 
-
+//Evaluates the moves in each direction in a sequential order.
+//That is, all moves in a particular direction are evaluated before evaluating the moves in another direction
 void Engine::EvaluateBishops1()
 {
-    for(int i=9;i<=10;i++)
+    for(int i=1;i<=16;i++)
     {
-        player1_possible[i].clear();
-        int x = player1_current[i].first;
-        int y = player1_current[i].second;
-        for(int j=-1;j<=1;j+=2)
-            for(int k=-1;k<=1;k+=2)
-                for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-                {
-                    if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
-                        break;
-                    else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
+        if(map_vector_to_board1[i] == 2)
+        {
+            player1_possible[i].clear();
+            int x = player1_current[i].first;
+            int y = player1_current[i].second;
+            for(int j=-1;j<=1;j+=2)
+                for(int k=-1;k<=1;k+=2)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
                     {
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                        {
+                            player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
                         player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                        break;
                     }
-                    player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                }
+        }
     }
 }
 
 void Engine::EvaluateBishops2()
 {
 
-    for(int i=9;i<=10;i++)
+    for(int i=1;i<=16;i++)
     {
-        player2_possible[i].clear();
-        int x = player2_current[i].first;
-        int y = player2_current[i].second;
-        for(int j=-1;j<=1;j+=2)
-            for(int k=-1;k<=1;k+=2)
-                for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-                {
-                    if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
-                        break;
-                    else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
+        if(map_vector_to_board2[i] == -2)
+        {
+            player2_possible[i].clear();
+            int x = player2_current[i].first;
+            int y = player2_current[i].second;
+            for(int j=-1;j<=1;j+=2)
+                for(int k=-1;k<=1;k+=2)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
                     {
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                        {
+                            player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
                         player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                        break;
                     }
-                    player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                }
+        }
     }
 }
 
+
+//All blocks in a 5x5 block with the knight at the center is evaliuated
+//The possible moves of the knight have the property that
+//1) The displacement in the x-direction and the y-direction are never equal
+//2) The sum of the displacement in the x-direction and the y-direction adds up to 3
 void Engine::EvaluateKnights1()
 {
-    for(int i=11;i<=12;i++)
+    for(int i=1;i<=16;i++)
     {
-        player1_possible[i].clear();
-        int x = player1_current[i].first;
-        int y = player1_current[i].second;
-
-        if(x>=0 && y>=0)
+        if(map_vector_to_board1[i] == 3)
         {
-            for(int j=-2;j<=2;j++)
-                for(int k=-2;k<=2;k++)
-                {
-                    if(j!=k && (abs(j)+abs(k)==3))
+            player1_possible[i].clear();
+            int x = player1_current[i].first;
+            int y = player1_current[i].second;
+
+            if(x>=0 && y>=0)
+            {
+                for(int j=-2;j<=2;j++)
+                    for(int k=-2;k<=2;k++)
                     {
-                        if(x+j>=0 && x+j<8 && y+k>=0 && y+k<8)
-                            if(board_matrix[(x+j)+(y+k)*8]<=0)
-                                player1_possible[i].push_back(make_pair(x+j, y+k));
+                        if(j!=k && (abs(j)+abs(k)==3))
+                        {
+                            if(x+j>=0 && x+j<8 && y+k>=0 && y+k<8)
+                                if(board_matrix[(x+j)+(y+k)*8]<=0)
+                                    player1_possible[i].push_back(make_pair(x+j, y+k));
+                        }
                     }
-                }
+            }
         }
     }
 }
 
 void Engine::EvaluateKnights2()
 {
-     for(int i=11;i<=12;i++)
+     for(int i=1;i<=16;i++)
     {
-        player2_possible[i].clear();
-        int x = player2_current[i].first;
-        int y = player2_current[i].second;
-
-        if(x>=0 && y>=0)
+        if(map_vector_to_board2[i] == -3)
         {
-            for(int j=-2;j<=2;j++)
-                for(int k=-2;k<=2;k++)
-                {
-                    if(j!=k && (abs(j)+abs(k)==3))
+            player2_possible[i].clear();
+            int x = player2_current[i].first;
+            int y = player2_current[i].second;
+
+            if(x>=0 && y>=0)
+            {
+                for(int j=-2;j<=2;j++)
+                    for(int k=-2;k<=2;k++)
                     {
-                        if(x+j>=0 && x+j<8 && y+k>=0 && y+k<8)
-                            if(board_matrix[(x+j)+(y+k)*8]>=0)
-                                player2_possible[i].push_back(make_pair(x+j, y+k));
+                        if(j!=k && (abs(j)+abs(k)==3))
+                        {
+                            if(x+j>=0 && x+j<8 && y+k>=0 && y+k<8)
+                                if(board_matrix[(x+j)+(y+k)*8]>=0)
+                                    player2_possible[i].push_back(make_pair(x+j, y+k));
+                        }
                     }
-                }
+            }
         }
     }
 }
 
+//Moves in a particular direction are evaluated before evaluating moves in another direction
 void Engine::EvaluateRooks1()
 {
-    for(int i=13;i<=14;i++)
+    for(int i=1;i<=16;i++)
     {
-        player1_possible[i].clear();
-        int x = player1_current[i].first;
-        int y = player1_current[i].second;
-        for(int j=-1;j<=1;j++)
-            for(int k=-1;k<=1;k++)
-                for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-                {
-                    if(j==0 && k==0)
-                        break;
-
-
-                    //Eliminate cross movement
-                    if(j!=0 && k!=0)
-                        break;
-                    if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
-                        break;
-                    else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
+        if(map_vector_to_board1[i]==4)
+        {
+            player1_possible[i].clear();
+            int x = player1_current[i].first;
+            int y = player1_current[i].second;
+            for(int j=-1;j<=1;j++)
+                for(int k=-1;k<=1;k++)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
                     {
+                        if(j==0 && k==0)
+                            break;
+
+
+                        //Eliminate cross movement
+                        if(j!=0 && k!=0)
+                            break;
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                        {
+                            player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
                         player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                        break;
                     }
-                    player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                }
+        }
     }
 }
 
 void Engine::EvaluateRooks2()
 {
-    for(int i=13;i<=14;i++)
+    for(int i=1;i<=16;i++)
     {
-        player2_possible[i].clear();
-        int x = player2_current[i].first;
-        int y = player2_current[i].second;
-        for(int j=-1;j<=1;j++)
-            for(int k=-1;k<=1;k++)
-                for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-                {
-                    if(j==0 && k==0)
-                        break;
-
-
-                    //Eliminate cross movement
-                    if(j!=0 && k!=0)
-                        break;
-                    if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
-                        break;
-                    else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
+        if(map_vector_to_board2[i]==-4)
+        {
+            player2_possible[i].clear();
+            int x = player2_current[i].first;
+            int y = player2_current[i].second;
+            for(int j=-1;j<=1;j++)
+                for(int k=-1;k<=1;k++)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
                     {
+                        if(j==0 && k==0)
+                            break;
+
+
+                        //Eliminate cross movement
+                        if(j!=0 && k!=0)
+                            break;
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                        {
+                            player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
                         player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                        break;
                     }
-                    player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
-                }
+        }
     }
 }
 
+//Moves in a particular direction are evaluated before evaluating moves in another direction
 void Engine::EvaluateQueen1()
 {
-    player1_possible[15].clear();
-    int x = player1_current[15].first;
-    int y = player1_current[15].second;
-    for(int j=-1;j<=1;j++)
-        for(int k=-1;k<=1;k++)
-            for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-            {
-                if(j==0 && k==0)
-                    break;
-                if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
-                    break;
-                else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
-                {
-                    player1_possible[15].push_back(make_pair(x+inc1, y+inc2));
-                    break;
-                }
-                player1_possible[15].push_back(make_pair(x+inc1, y+inc2));
-            }
+    for(int i=1;i<=16;i++)
+    {
+        if(map_vector_to_board1[i]==5)
+        {
+            player1_possible[i].clear();
+            int x = player1_current[i].first;
+            int y = player1_current[i].second;
+            for(int j=-1;j<=1;j++)
+                for(int k=-1;k<=1;k++)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
+                    {
+                        if(j==0 && k==0)
+                            break;
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                        {
+                            player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
+                        player1_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                    }
+        }
+    }
 }
 
 void Engine::EvaluateQueen2()
 {
-     player2_possible[15].clear();
-    int x = player2_current[15].first;
-    int y = player2_current[15].second;
-    for(int j=-1;j<=1;j++)
-        for(int k=-1;k<=1;k++)
-            for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
-            {
-                if(j==0 && k==0)
-                    break;
-                if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
-                    break;
-                else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
-                {
-                    player2_possible[15].push_back(make_pair(x+inc1, y+inc2));
-                    break;
-                }
-                player2_possible[15].push_back(make_pair(x+inc1, y+inc2));
-            }
+    for(int i=1;i<=16;i++)
+    {
+        if(map_vector_to_board2[i] == -5)
+        {
+            player2_possible[i].clear();
+            int x = player2_current[i].first;
+            int y = player2_current[i].second;
+            for(int j=-1;j<=1;j++)
+                for(int k=-1;k<=1;k++)
+                    for(int inc1 = j, inc2 = k ; (x+inc1>=0 && x+inc1<8) && (y+inc2>=0 && y+inc2<8);inc1+=j, inc2+=k)
+                    {
+                        if(j==0 && k==0)
+                            break;
+                        if(board_matrix[(x+inc1) + (y+inc2)*8]<0)
+                            break;
+                        else if (board_matrix[(x+inc1) + (y+inc2)*8]>0)
+                        {
+                            player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                            break;
+                        }
+                        player2_possible[i].push_back(make_pair(x+inc1, y+inc2));
+                    }
+        }
+    }
 }
 
-
+//All possible moves withing a 3x3 block with the king at the centre are evaluated indivually
 void Engine::EvaluateKing1()
 {
      player1_possible[16].clear();
@@ -497,6 +545,153 @@ void Engine::EvaluateKing2()
         }
 }
 
+//Checks for check anyway
+void Engine::EvaluateCastle1()
+{
+    if(!CheckIfCheck1())
+    {
+        int king_pos_x = player1_current[16].first;
+        int king_pos_y = player1_current[16].second;
+
+        if(king_pos_x == 4 && king_pos_y==0)
+        {
+            //Check for castle to left side
+            //Check if positions in between are empty
+            if(board_matrix[3 + 0*8] == 0 && board_matrix[2 + 0*8]==0 && board_matrix[1 + 0*8] == 0)
+            {
+                //Check if piece at end is rook
+                int index_rook = board_matrix[0 + 0*8];
+                if(index_rook>0)
+                    if(map_vector_to_board1[index_rook]==4)
+                        if(CheckIfMoved(16) == false && CheckIfMoved(index_rook) == false)
+                            player1_possible[16].push_back(make_pair(2,0));
+            }
+
+            //Same logic as above
+            if(board_matrix[5+ 0*8]==0 && board_matrix[6 + 0*8]==0)
+            {
+                int index_rook = board_matrix[7 + 0*8];
+                if(index_rook >0)
+                    if(map_vector_to_board1[index_rook] == 4)
+                        if(CheckIfMoved(16) == false && CheckIfMoved(index_rook) == false)
+                            player1_possible[16].push_back(make_pair(6,0));
+            }
+        }
+    }
+}
+
+void Engine::EvaluateCastle2()
+{
+    if(!CheckIfCheck2())
+    {
+        int king_pos_x = player2_current[16].first;
+        int king_pos_y = player2_current[16].second;
+
+        if(king_pos_x == 4 && king_pos_y==7)
+        {
+            //Check for castle to left side
+            //Check if positions in between are empty
+            if(board_matrix[3 + 7*8] == 0 && board_matrix[2 + 7*8]==0 && board_matrix[1 + 7*8] == 0)
+            {
+                //Check if piece at end is rook
+                int index_rook = -board_matrix[0 + 7*8];
+                if(index_rook>0)
+                    if(map_vector_to_board2[index_rook]==-4)
+                        if(CheckIfMoved(-16) == false && CheckIfMoved(-index_rook) == false)
+                            player2_possible[16].push_back(make_pair(2,7));
+            }
+
+            //Same logic as above
+            if(board_matrix[5+ 7*8]==0 && board_matrix[6 + 7*8]==0)
+            {
+                int index_rook = -board_matrix[7 + 7*8];
+                if(index_rook >0)
+                    if(map_vector_to_board2[index_rook] == -4)
+                        if(CheckIfMoved(-16) == false && CheckIfMoved(-index_rook) == false)
+                            player2_possible[16].push_back(make_pair(6,7));
+            }
+        }
+    }
+}
+
+void Engine::EvaluateEnPassant1()
+{
+    for(int i=1;i<=16;i++)
+    {
+        if(map_vector_to_board1[i] == 1)
+        {
+            if(player1_current[i].second==4)
+            {
+                int pawn_x = player1_current[i].first;
+
+                //Check to left
+                if(pawn_x-1>=0)
+                    if(map_vector_to_board2[abs(board_matrix[(pawn_x -1 ) + 4*8])] == -1)
+                    {
+                        // Check if previous move made by piece was a double move
+                        //Length of vector should be greater than zero since
+                        //Otherwise it's not possible for pawn to reach y=4
+                        vector<moves>::iterator it = previous_moves.end();
+                        --it;
+
+                        if(map_vector_to_board2[abs(it->piece_id)] == -1 && it->x1 == (pawn_x -1) && it->y0 == 6 && it->y1 == 4)
+                            player1_possible[i].push_back(make_pair(pawn_x-1, 5));
+                    }
+                //Check to right
+                if(pawn_x+1<8)
+                    if(map_vector_to_board2[abs(board_matrix[(pawn_x + 1) + 4*8])] == -1)
+                    {
+                        vector<moves>::iterator it = previous_moves.end();
+                        --it;
+
+                        if(map_vector_to_board2[abs(it->piece_id)] == -1 && it->x1 == (pawn_x +1) && it->y0 == 6 && it->y1 == 4)
+                            player1_possible[i].push_back(make_pair(pawn_x+1, 5));
+                    }
+
+            }
+        }
+    }
+}
+
+void Engine::EvaluateEnPassant2()
+{
+    for(int i=1;i<=16;i++)
+    {
+        if(map_vector_to_board2[i] == -1)
+        {
+            if(player2_current[i].second==3)
+            {
+                int pawn_x = player2_current[i].first;
+
+                //Check to left
+                if(pawn_x-1>=0)
+                    if(map_vector_to_board1[abs(board_matrix[(pawn_x -1 ) + 3*8])] == 1)
+                    {
+                        // Check if previous move made by piece was a double move
+                        //Length of vector should be greater than zero since
+                        //Otherwise it's not possible for pawn to reach y=4
+                        vector<moves>::iterator it = previous_moves.end();
+                        --it;
+
+                        if(map_vector_to_board1[abs(it->piece_id)] == 1 && it->x1 == (pawn_x -1) && it->y0 == 1 && it->y1 == 3)
+                            player2_possible[i].push_back(make_pair(pawn_x-1, 2));
+                    }
+                //Check to right
+                if(pawn_x+1<8)
+                    if(map_vector_to_board1[abs(board_matrix[(pawn_x + 1) + 3*8])] == 1)
+                    {
+                        vector<moves>::iterator it = previous_moves.end();
+                        --it;
+
+                        if(map_vector_to_board1[abs(it->piece_id)] == 1 && it->x1 == (pawn_x +1) && it->y0 == 1 && it->y1 == 3)
+                            player2_possible[i].push_back(make_pair(pawn_x+1, 2));
+                    }
+
+            }
+        }
+    }
+}
+//Evaluates all possible moves for the opponent. And checks if any of them can reach the king
 bool Engine::CheckIfCheck1()
 {
     EvaluateAllPlayer2Raw();
@@ -522,6 +717,7 @@ bool Engine::CheckIfCheck1()
     return check;
 }
 
+//Evaluates all possible moves for the opponent. And checks if any of them can reach the king
 bool Engine::CheckIfCheck2()
 {
     EvaluateAllPlayer1Raw();
@@ -546,6 +742,18 @@ bool Engine::CheckIfCheck2()
 
     return check;
 }
+
+bool Engine::CheckIfMoved(int index)
+{
+    for(vector<moves>::iterator it = previous_moves.begin();it!=previous_moves.end();++it)
+    {
+        if(it->piece_id == index)
+            return true;
+    }
+
+    return false;
+}
+
 
 
 #endif // _EVALUATION_H

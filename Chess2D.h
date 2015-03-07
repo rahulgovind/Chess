@@ -286,9 +286,11 @@ int Chess2D::StartGame()
     shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
     glAttachShader(shader_program, fragment_shader);
-    //Bind fragment output
+
+    //Bind fragment output to output 0
     glBindFragDataLocation(shader_program, 0, "outColor");
 
+    //Link and use the shader program
     glLinkProgram(shader_program);
     glUseProgram(shader_program);
 
@@ -299,32 +301,38 @@ int Chess2D::StartGame()
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
+    //Load paramter for the texture.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    //Load the texture file
     int width, height;
     unsigned char* pixels = loadBMP("chess.bmp", &width, &height);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
+    //Deallocate memory used up by the image file
+    unload_BMP(pixels);
+
 
     //Set position attribute
-    //glBindFragDataLocation(shaderProgram, 0, "outColor");
     GLint posAttrib = glGetAttribLocation(shader_program, "position");
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, (7*sizeof(GLfloat)), 0); //Now stores in the VAO vao
     glEnableVertexAttribArray(posAttrib);
 
+    //Set color attributes for the board
     GLint colAttrib = glGetAttribLocation(shader_program, "color");
     glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
     glEnableVertexAttribArray(colAttrib);
     glfwSwapInterval(1);
 
+    //Set texture attributes for the board
     GLuint texAttrib = glGetAttribLocation(shader_program, "texcoord");
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(5*sizeof(GLfloat)));
     glEnableVertexAttribArray(texAttrib);
 
-    //Enable alpha
+    //Enable alpha ( transparency )
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -333,6 +341,8 @@ int Chess2D::StartGame()
         if(glfwGetKey(window, GLFW_KEY_ESCAPE)==GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
 
+        //Asks the engine if there is any change in the game.
+        //And if a change in the vertice information is required
         if(engine->CheckIfUpdated())
         {
             LoadPieceTextures();
@@ -347,6 +357,8 @@ int Chess2D::StartGame()
         int game_status = engine->GetGameStatus();
 
         bool stop_game = false;
+        //Get statatus of the game
+        //Game is stopped if there's either a checkmate or stalemate
         switch(game_status)
         {
         case CHECKMATE_PLAYER2:
