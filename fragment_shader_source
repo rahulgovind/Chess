@@ -1,0 +1,17 @@
+#version 150 core
+
+in vec3 Color;
+in vec2 Texcoord;
+
+uniform sampler2D tex;
+
+out vec4 outColor;
+
+void main()
+{
+    vec4 temp = texture(tex, Texcoord);
+    if(temp[3]==0)
+        outColor = vec4(Color, 1.0);
+    else
+        outColor = temp;
+}
