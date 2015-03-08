@@ -36,13 +36,13 @@ unsigned char* loadBMP(const char* fname,int *width, int *height)
             {
                 for(int j=0;j<(*width)*pixelbytes; j+=pixelbytes)
                 {
-                    pixeliter[0] = rowtempiter[2];
-                    pixeliter[1] = rowtempiter[1];
-                    pixeliter[2] = rowtempiter[0];
-
-                    pixeliter += 3;
-                    rowtempiter += 3;
+                    for(int k = 0;k<3;k++)
+                        pixeliter[k] = rowtempiter[2-k];
                 }
+
+                pixeliter += 3;
+                rowtempiter += 3;
+
             }
             else
             {

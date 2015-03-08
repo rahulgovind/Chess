@@ -6,13 +6,12 @@
 
 #include <GL/glfw3.h>
 #include <cstdio>
-#include <fstream>
 #include <bits/stdc++.h>
 
 #include "image_loader.h"
 #include "engine.h"
 #include "evaluation.h"
-
+#include "shader_source.h"
 
 using namespace std;
 
@@ -76,8 +75,6 @@ private:
     void DrawBoard();
     static void ProcessMouseInput(GLFWwindow*,int,int,int);
 
-    static void SelectBlock(int,int);
-    static void DeselectBlock(int,int);
 
 
 public:
@@ -99,7 +96,7 @@ GLuint Chess2D::num_vertices = 0;
 Engine* Chess2D::engine = NULL;
 
 RGB Chess2D::white(0.8,0.8,0.8);
-RGB Chess2D::black(0.3, 0.3, 0.3);
+RGB Chess2D::black(0.4, 0.4, 0.4);
 RGB Chess2D::selected_color(0.1, 0.8, 0.1);
 RGB Chess2D::highlighted_color(0.3, 1.0, 0.3);
 
@@ -164,37 +161,6 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     }
     num_elements = 8*8*6;
 
-    //Load vertex shader
-    ifstream f1("vertex_shader_source", ios::binary);
-    if(!f1.good())
-        fputs("Unable to load source code for vertex shader\n", stderr);
-    else
-    {
-        f1.seekg(0, ios::end);
-        GLuint size = f1.tellg();
-        vertex_source= new char[size+1];
-        f1.seekg(0, ios::beg);
-        f1.read(vertex_source, size);
-        vertex_source[size]='\0';
-        f1.close();
-    }
-
-    ifstream f2("fragment_shader_source", ios::binary);
-    if(!f2.good())
-        fputs("Unable to load source code for fragment shader\n", stderr);
-    else
-    {
-        f2.seekg(0, ios::end);
-        GLuint size = f2.tellg();
-        fragment_source = new char[size+1];
-        f2.seekg(0, ios::beg);
-        f2.read(fragment_source, size);
-        fragment_source[size]='\0';
-        f2.close();
-    }
-
-
-
     //Load engine for chess
     engine = new Engine;
     LoadBoardColor();
@@ -204,6 +170,7 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
 
 int Chess2D::StartGame()
 {
+
 
     if(!glfwInit())
     {
@@ -257,7 +224,7 @@ int Chess2D::StartGame()
     GLint status;
     //Loading vertex shader
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    glShaderSource(vertex_shader, 1, (const GLchar**)&vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
 
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
@@ -271,7 +238,7 @@ int Chess2D::StartGame()
 
     //Load fragment shader
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glShaderSource(fragment_shader, 1, (const GLchar**)&fragment_shader_source, NULL);
     glCompileShader(fragment_shader);
 
 

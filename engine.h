@@ -195,6 +195,7 @@ int Engine::GetPiece(int x,int y)
         return map_vector_to_board1[p];
     else if(p<0)
         return map_vector_to_board2[-p];
+    return 0;
 }
 
 //Added for user interface.
