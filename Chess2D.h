@@ -10,22 +10,21 @@
 
 #include "image_loader.h"
 #include "engine.h"
-#include "engine_ai.h"
-
-#include "validation.h"
 #include "shader_source.h"
 
 using namespace std;
 
-struct RGB
+
+struct RGBA
 {
     float r;
     float g;
     float b;
+    float a;
 
-    RGB() {};
+    RGBA() {};
 
-    RGB(float R, float G, float B) { r = R; b = B; g = G; }
+    RGBA(float R, float G, float B) { r = R; b = B; g = G; }
 };
 
 float textures[][8] = {  {0, 0,          0, 0,           0, 0,       0,0        },
@@ -66,28 +65,32 @@ private:
     GLuint *elements;
     GLuint num_elements;
 
-    static RGB white;
-    static RGB black;
-    static RGB selected_color;
-    static RGB highlighted_color;
+    static RGBA white;
+    static RGBA black;
+    static RGBA selected_color;
+    static RGBA highlighted_color;
 
     static Engine *engine;
     void LoadBoardColor();
     void LoadPieceTextures();
     void DrawBoard();
+    static
+    void ProcessMouseInput(GLFWwindow*,int,int,int);
 
     static bool selected;
     static int prev_x;
     static int prev_y;
-    static void ProcessMouseInput(GLFWwindow*,int,int,int);
+
 
     static bool prev_selected;
     static int prev_game_state;
     static int current_player;
 
+    static bool single_player_mode;
 
 public:
     Chess2D(int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
+
     int StartGame();
 
     ~Chess2D();
@@ -104,18 +107,19 @@ GLuint Chess2D::num_vertices = 0;
 
 Engine* Chess2D::engine = NULL;
 
-RGB Chess2D::white(0.8,0.8,0.8);
-RGB Chess2D::black(0.4, 0.4, 0.4);
-RGB Chess2D::selected_color(0.1, 0.8, 0.1);
-RGB Chess2D::highlighted_color(0.3, 1.0, 0.3);
+RGBA Chess2D::white(0.8,0.8,0.8);
+RGBA Chess2D::black(0.4, 0.4, 0.4);
+RGBA Chess2D::selected_color(0.1, 0.8, 0.1);
+RGBA Chess2D::highlighted_color(0.3, 1.0, 0.3);
 
 bool Chess2D::selected = false;
 int Chess2D::prev_x = 0;
 int Chess2D::prev_y = 0;
-
 bool Chess2D::prev_selected = false;
 int Chess2D::current_player = 1;
 int Chess2D::prev_game_state = 0;
+
+bool Chess2D::single_player_mode = true;
 //Load vertex shader, Fragment shader, set glfw window hints, initialize data
 Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
 {
@@ -178,7 +182,7 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     num_elements = 8*8*6;
 
     //Load engine for chess
-    engine = new Engine;
+    engine = new Engine(true);
     LoadBoardColor();
     LoadPieceTextures();
 
@@ -390,15 +394,22 @@ Chess2D::~Chess2D()
 
 void Chess2D::LoadBoardColor()
 {
+    static moves prev_ai_move = moves(-2,-2,-2,-2);
+    moves ai_move;
     int index = 0;
+    if(single_player_mode)
+        ai_move = engine->GetAIMove();
+
+
     for(int j=0;j<8;j++)
         for(int i = 0;i<8;i++)
         {
 
-            RGB board_color;
+            RGBA board_color;
 
             if(selected)
             {
+
                 bool possible_move = engine->IsValidMove(prev_x, prev_y, i, j);
 
                 if(i==prev_x && j==prev_y)
@@ -410,6 +421,8 @@ void Chess2D::LoadBoardColor()
                         board_color = white;
                     else
                         board_color = black;
+                //Discard AI move highlight
+                prev_ai_move = ai_move;
             }
             else
             {
@@ -417,7 +430,22 @@ void Chess2D::LoadBoardColor()
                     board_color = white;
                 else
                     board_color = black;
+
+                //Also highlight moves made by computer in single player mode
+
+                if(ai_move.x0 != prev_ai_move.x0 || ai_move.y0!= prev_ai_move.y0 || ai_move.x1 != prev_ai_move.x1 || ai_move.y1 !=prev_ai_move.y1)
+                    if(single_player_mode)
+                    {
+                        if(i==ai_move.x0 && j==ai_move.y0)
+                            board_color = highlighted_color;
+                        else if(i==ai_move.x1 && j==ai_move.y1)
+                            board_color = selected_color;
+
+                    }
+
+
             }
+
             for(int k=0;k<4;k++)
             {
                 vertices[index+2] = board_color.r;
@@ -425,7 +453,11 @@ void Chess2D::LoadBoardColor()
                 vertices[index+4] = board_color.b;
                 index+=7;
             }
+
         }
+
+
+
 }
 
 void Chess2D::LoadPieceTextures()
@@ -452,7 +484,7 @@ void Chess2D::LoadPieceTextures()
 
 void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mods)
 {
-    if(action ==GLFW_PRESS)
+    if(action ==GLFW_PRESS && engine->GetGameStatus()!=GAME_THINKING)
     {
         double x,y;
         glfwGetCursorPos(window, &x, &y);
@@ -498,8 +530,5 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
         }
     }
 }
-
-
-
 
 #endif // _CHESS2D_H
