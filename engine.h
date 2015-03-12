@@ -51,8 +51,8 @@ class Engine
     int MakeMove(int x0, int y0, int x1, int y1);
     void MakeAIMove();
     static moves minimax_base(Engine*,int depth, float alpha, float beta, int no_prune);
-    float minimize(int depth,float alpha, float beta, int no_prune);
-    float maximize(int depth,float alpha, float beta, int no_prune);
+    float minimize(int depth, int max_depth,float alpha, float beta, int no_prune);
+    float maximize(int depth, int max_depth,float alpha, float beta, int no_prune);
     int CountPossibleMoves(bool);
     float EvaluateFunction();
 

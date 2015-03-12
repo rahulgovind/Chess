@@ -198,8 +198,9 @@ int Chess2D::StartGame()
         return -1;
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -208,9 +209,18 @@ int Chess2D::StartGame()
     window = glfwCreateWindow(window_width, window_height, "Chess 2D", NULL, NULL);
     if(!window)
     {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
 
-        fputs("Unable to create window\n", stderr);
-        return -1;
+        window = glfwCreateWindow(window_width, window_height, "Chess 2D", NULL, NULL);
+
+        if(!window)
+        {
+            fputs("Unable to create window\n", stderr);
+            return -1;
+        }
     }
 
     glfwSetMouseButtonCallback(window, ProcessMouseInput);
@@ -250,9 +260,12 @@ int Chess2D::StartGame()
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
     if(status!=GL_TRUE)
     {
-        fputs(vertex_source, stderr);
-
         fputs("Unable to compile vertex shader\n", stderr);
+
+        printf("Your GLSL version is %s\n", (char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+        char buffer[512];
+        glGetShaderInfoLog(vertex_shader, 512, NULL, buffer);
+        printf("%s\n", buffer);
         return -1;
     }
 
@@ -266,6 +279,10 @@ int Chess2D::StartGame()
     if(status!=GL_TRUE)
     {
         fputs("Unable to compile fragment shader\n", stderr);
+        char buffer[512];
+        printf("Your GLSL version is %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+        glGetShaderInfoLog(fragment_shader, 512, NULL, buffer);
+        printf("%s\n", buffer);
         return -1;
     }
     //Link and compile shader program

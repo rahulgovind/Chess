@@ -1,6 +1,7 @@
 #include "engine.h"
 #include <bits/stdc++.h>
 #include <windows.h>
+#include <ctime>
 
 using namespace std;
 
@@ -14,6 +15,8 @@ int pieces_lost2[7];
 
 list<moves> killer_moves[12];
 int killer_moves_max = 3;
+
+bool first_move_played = false;
 
 float Engine::EvaluateFunction()
 {
@@ -32,18 +35,22 @@ int Engine::CountPossibleMoves(bool player1)
     int result = 0;
      for(int x0=0;x0<8;x0++)
         for(int y0=0;y0<8;y0++)
+        {
+            if((player1 && board_matrix[x0][y0]>0) || (!player1 && board_matrix[x0][y0]<0))
+            {
             for(int x1=0;x1<8;x1++)
                 for(int y1=0;y1<8;y1++)
-                    if((player1 && board_matrix[x0][y0]>0) || (!player1 && board_matrix[x0][y0]<0))
-                        if(IsValidMoveBase(x0, y0, x1, y1))
-                            result++;
+                    if(IsValidMoveBase(x0, y0, x1, y1))
+                        result++;
+            }
+        }
     return result;
 
 }
 
-float Engine::maximize(int depth, float alpha, float beta, int no_prune)
+float Engine::maximize(int depth, int max_depth, float alpha, float beta, int no_prune)
 {
-    if(depth>0)
+    if(depth<=max_depth)
     {
         if(IsCheckmate2())
         {
@@ -75,7 +82,7 @@ float Engine::maximize(int depth, float alpha, float beta, int no_prune)
                         board_matrix[x1][y1] = prev_0;
                         pieces_lost1[prev_1]++;
 
-                        float value_evaluated = minimize(depth-1, alpha, beta, no_prune - 1);
+                        float value_evaluated = minimize(depth+1, max_depth, alpha, beta, no_prune - 1);
 
                         max_here = max(value_evaluated, max_here);
                         alpha = max(max_here, alpha);
@@ -115,7 +122,7 @@ float Engine::maximize(int depth, float alpha, float beta, int no_prune)
                                     board_matrix[x1][y1] = prev_0;
                                     pieces_lost1[prev_1]++;
 
-                                    float value_evaluated = minimize(depth-1, alpha, beta, no_prune - 1);
+                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta, no_prune - 1);
 
                                     max_here = max(value_evaluated, max_here);
                                     alpha = max(max_here, alpha);
@@ -140,10 +147,10 @@ float Engine::maximize(int depth, float alpha, float beta, int no_prune)
 }
 
 
-float Engine::minimize(int depth, float alpha, float beta,int no_prune)
+float Engine::minimize(int depth, int max_depth, float alpha, float beta,int no_prune)
 {
 
-    if(depth>0)
+    if(depth<=max_depth)
     {
         if(IsCheckmate1())
         {
@@ -173,7 +180,7 @@ float Engine::minimize(int depth, float alpha, float beta,int no_prune)
                         board_matrix[x1][y1] = prev_0;
                         pieces_lost2[-prev_1]++;
 
-                        float value_evaluated = maximize(depth-1, alpha, beta, no_prune-1);
+                        float value_evaluated = maximize(depth+1, max_depth, alpha, beta, no_prune-1);
 
 
                         min_here = min(value_evaluated, min_here);
@@ -212,7 +219,7 @@ float Engine::minimize(int depth, float alpha, float beta,int no_prune)
                                     board_matrix[x1][y1] = prev_0;
                                     pieces_lost2[-prev_1]++;
 
-                                    float value_evaluated = maximize(depth-1, alpha, beta, no_prune-1);
+                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta, no_prune-1);
 
 
                                     min_here = min(value_evaluated, min_here);
@@ -236,7 +243,7 @@ float Engine::minimize(int depth, float alpha, float beta,int no_prune)
     return EvaluateFunction();
 }
 
-moves Engine::minimax_base(Engine *eng, int depth,float alpha, float beta, int no_prune)
+moves Engine::minimax_base(Engine *eng, int max_depth, float alpha, float beta, int no_prune)
 {
     for(int i=0;i<7;i++)
     {
@@ -244,8 +251,17 @@ moves Engine::minimax_base(Engine *eng, int depth,float alpha, float beta, int n
         pieces_lost2[i] = 0;
     }
 
-    for(int i=0;i<12;i++)
-        killer_moves[i].clear();
+
+    if(!first_move_played)
+    {
+        for(int i=0;i<12;i++)
+            killer_moves[i].clear();
+        first_move_played = true;
+    }
+    else
+        for(int i=0;i<10;i++)
+            killer_moves[i] = killer_moves[i+2];
+
     moves result;
     if (!(eng->IsCheckmate2()) && !(eng->IsStalemate1()))
     {
@@ -265,7 +281,7 @@ moves Engine::minimax_base(Engine *eng, int depth,float alpha, float beta, int n
                                 eng->board_matrix[x1][y1] = prev_0;
                                 pieces_lost1[prev_1]++;
 
-                                float value_evaluated = eng->minimize(depth-1, alpha, beta, no_prune-1);
+                                float value_evaluated = eng->minimize(2, max_depth, alpha, beta, no_prune-1);
 
                                 if(value_evaluated > max_here)
                                 {
@@ -290,14 +306,18 @@ moves Engine::minimax_base(Engine *eng, int depth,float alpha, float beta, int n
 
 long unsigned int __stdcall Engine::AIThread(void *input)
 {
+    int t = time(NULL);
     Engine *main_engine = (Engine*)input;
     Engine *test_engine = new Engine(input);
     for(int i=0;i<8;i++)
         for(int j=0;j<8;j++)
             test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
-    printf("Thinking. Please wait.");
-    moves ai = Engine::minimax_base(test_engine, 4, -100000000, 100000000, 0);
-    printf("Move played: %c%c to %c%c\n", ai.x0+'a', ai.y0+'1', ai.x1+'a', ai.y1+'1');
+    printf("Thinking. Please wait. \n");
+
+    int t1 = 1;
+    moves ai;
+
+    ai = Engine::minimax_base(test_engine, 4, -100000000, 100000000, 0);
     main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);
     main_engine->ProcessInput(ai.x0, ai.y0, ai.x1, ai.y1);
 }

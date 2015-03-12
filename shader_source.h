@@ -1,4 +1,4 @@
-const char* vertex_shader_source =  "#version 150 core \n"
+const char* vertex_shader_source =  "#version 150 core\n"
                                     "in vec3 color; \n"
                                     "in vec2 position;\n"
                                     "in vec2 texcoord;\n"
