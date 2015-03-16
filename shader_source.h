@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const char* vertex_shader_source =  "#version 150 core \n"
+=======
+const char* vertex_shader_source =  "#version 150 core\n"
+>>>>>>> ddaac48b2ad03d549ebf3346dec036dcead228a9
                                     "in vec3 color; \n"
                                     "in vec2 position;\n"
                                     "in vec2 texcoord;\n"
