@@ -3,20 +3,17 @@
 #include <windows.h>
 #include <ctime>
 
+//Killer moves heuristic removed
 using namespace std;
 
 float values[] = { 0, 100, 300, 300, 500, 900, 100000};
-
 float mobility_value = 5;
-float quies = 0.25;
-
+bool set_quies = true;
 int pieces_lost1[7];
 int pieces_lost2[7];
-
-list<moves> killer_moves[12];
-int killer_moves_max = 3;
-
+float quies_factor = 0.25;
 bool first_move_played = false;
+int total_count = 0;
 
 float Engine::EvaluateFunction()
 {
@@ -24,6 +21,9 @@ float Engine::EvaluateFunction()
 
     for(int i=1;i<=6;i++)
         result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
+
+    //Just for debugging
+    total_count++;
 
     result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
 
@@ -48,9 +48,9 @@ int Engine::CountPossibleMoves(bool player1)
 
 }
 
-float Engine::maximize(int depth, int max_depth, float alpha, float beta, int no_prune)
+float Engine::maximize(int depth, int max_depth, float alpha, float beta, int extra)
 {
-    if(depth<=max_depth)
+    if(depth<=max_depth+extra)
     {
         if(IsCheckmate2())
         {
@@ -67,45 +67,6 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta, int no
         else
         {
             float max_here = -100000000;
-            //Killer move heuristic
-            if(killer_moves[depth].size()>0)
-            {
-                for(list<moves>::iterator it =  killer_moves[depth].begin(); it!= killer_moves[depth].end(); ++it)
-                {
-                    int x0 = it->x0, y0 = it->y0, x1 = it->x1, y1 = it->y1;
-                    if(IsValidMove(x0, y0, x1, y1))
-                    {
-                         //Do move
-                        int prev_0 = board_matrix[x0][y0];
-                        int prev_1 = board_matrix[x1][y1];
-                        board_matrix[x0][y0]= 0;
-                        board_matrix[x1][y1] = prev_0;
-                        pieces_lost1[prev_1]++;
-
-                        float value_evaluated = minimize(depth+1, max_depth, alpha, beta, no_prune - 1);
-
-                        max_here = max(value_evaluated, max_here);
-                        alpha = max(max_here, alpha);
-
-                        //Undo move
-                        pieces_lost1[prev_1]--;
-                        board_matrix[x0][y0] = prev_0;
-                        board_matrix[x1][y1] = prev_1;
-
-                        if(beta<=alpha)
-                        {
-                            if(killer_moves[depth].size()==killer_moves_max)
-                                killer_moves[depth].pop_back();
-                            killer_moves[depth].emplace_front(x0, y0, x1, y1);
-
-                            if(no_prune<=0)
-                                return max_here;
-                        }
-                    }
-                }
-            }
-            max_here = -100000000;
-
 
             //Normal minimax with alpha - beta pruning
             for(int x0=0;x0<8;x0++)
@@ -117,40 +78,42 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta, int no
                                 {
                                     //Do move
                                     int prev_0 = board_matrix[x0][y0];
-                                    int prev_1 = board_matrix[x1][y1];
-                                    board_matrix[x0][y0]= 0;
-                                    board_matrix[x1][y1] = prev_0;
+                                    int prev_1 = MakeMove(x0, y0, x1, y1);
+
                                     pieces_lost1[prev_1]++;
 
-                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta, no_prune - 1);
+                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta, extra);
 
                                     max_here = max(value_evaluated, max_here);
                                     alpha = max(max_here, alpha);
 
                                     //Undo move
                                     pieces_lost1[prev_1]--;
-                                    board_matrix[x0][y0] = prev_0;
-                                    board_matrix[x1][y1] = prev_1;
+                                    UndoMove(prev_0, prev_1, x0, y0, x1, y1);
 
                                     if(beta<=alpha)
-                                    {
-
-                                        if(no_prune<=0)
                                             return max_here;
-                                    }
+
                                 }
             return max_here;
         }
     }
 
+    //Count total pieces lost
+    int total_pieces_lost = 0;
+    for(int i=1;i<=6;i++)
+        total_pieces_lost+=pieces_lost1[i] + pieces_lost2[i];
+    extra = (int)(quies_factor*total_pieces_lost);
+    if(depth<=max_depth+extra && set_quies)
+        return maximize(depth, max_depth, alpha, beta, extra);
+
     return EvaluateFunction();
 }
 
-
-float Engine::minimize(int depth, int max_depth, float alpha, float beta,int no_prune)
+float Engine::minimize(int depth, int max_depth, float alpha, float beta, int extra)
 {
 
-    if(depth<=max_depth)
+    if(depth<=max_depth+extra)
     {
         if(IsCheckmate1())
         {
@@ -164,47 +127,6 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta,int no_
         else
         {
             float min_here = 100000000;
-
-            //Killer move heuristic
-            if(killer_moves[depth].size()>0)
-            {
-                for(list<moves>::iterator it =  killer_moves[depth].begin(); it!= killer_moves[depth].end(); ++it)
-                {
-                    int x0 = it->x0, y0 = it->y0, x1 = it->x1, y1 = it->y1;
-                    if(IsValidMove(x0, y0, x1, y1))
-                    {
-                        //Do move
-                        int prev_0 = board_matrix[x0][y0];
-                        int prev_1 = board_matrix[x1][y1];
-                        board_matrix[x0][y0]= 0;
-                        board_matrix[x1][y1] = prev_0;
-                        pieces_lost2[-prev_1]++;
-
-                        float value_evaluated = maximize(depth+1, max_depth, alpha, beta, no_prune-1);
-
-
-                        min_here = min(value_evaluated, min_here);
-                        beta = min(min_here, beta);
-
-                        //Undo move
-                        pieces_lost2[-prev_1]--;
-                        board_matrix[x0][y0] = prev_0;
-                        board_matrix[x1][y1] = prev_1;
-
-
-                        if(beta<=alpha)
-                        {
-                            if(killer_moves[depth].size()==killer_moves_max)
-                                killer_moves[depth].pop_back();
-
-                            killer_moves[depth].emplace_front(x0, x1, y0, y1);
-                            if(no_prune<=0)
-                                return min_here;
-                        }
-                    }
-                }
-            }
-            min_here = 100000000;
             for(int x0=0;x0<8;x0++)
                 for(int y0=0;y0<8;y0++)
                     for(int x1=0;x1<8;x1++)
@@ -214,12 +136,13 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta,int no_
                                 {
                                       //Do move
                                     int prev_0 = board_matrix[x0][y0];
-                                    int prev_1 = board_matrix[x1][y1];
-                                    board_matrix[x0][y0]= 0;
-                                    board_matrix[x1][y1] = prev_0;
-                                    pieces_lost2[-prev_1]++;
+                                    int prev_1 = MakeMove(x0, y0, x1, y1);
+                                    if(prev_1 == 7)
+                                        pieces_lost2[5]++;
+                                    else
+                                        pieces_lost2[-prev_1]++;
 
-                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta, no_prune-1);
+                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta, extra);
 
 
                                     min_here = min(value_evaluated, min_here);
@@ -227,23 +150,28 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta,int no_
 
                                     //Undo move
                                     pieces_lost2[-prev_1]--;
-                                    board_matrix[x0][y0] = prev_0;
-                                    board_matrix[x1][y1] = prev_1;
+                                    UndoMove(prev_0, prev_1, x0, y0, x1, y1);
 
 
                                     if(beta<=alpha)
-                                    {
-                                        if(no_prune<=0)
-                                            return min_here;
-                                    }
+                                        return min_here;
+
                                 }
             return min_here;
         }
     }
+
+    //Count total pieces lost
+    int total_pieces_lost = 0;
+    for(int i=1;i<=6;i++)
+        total_pieces_lost+=pieces_lost1[i] + pieces_lost2[i];
+    extra = (int)(quies_factor*total_pieces_lost);
+    if(depth<=max_depth+extra && set_quies)
+        return minimize(depth, max_depth, alpha, beta, extra);
     return EvaluateFunction();
 }
 
-moves Engine::minimax_base(Engine *eng, int max_depth, float alpha, float beta, int no_prune)
+moves Engine::minimax_base(int max_depth, float alpha, float beta)
 {
     for(int i=0;i<7;i++)
     {
@@ -251,37 +179,25 @@ moves Engine::minimax_base(Engine *eng, int max_depth, float alpha, float beta, 
         pieces_lost2[i] = 0;
     }
 
-
-    if(!first_move_played)
-    {
-        for(int i=0;i<12;i++)
-            killer_moves[i].clear();
-        first_move_played = true;
-    }
-    else
-        for(int i=0;i<10;i++)
-            killer_moves[i] = killer_moves[i+2];
-
     moves result;
-    if (!(eng->IsCheckmate2()) && !(eng->IsStalemate1()))
+    if (!(IsCheckmate2()) && !(IsStalemate1()))
     {
         float max_here = -100000000;
         for(int x0=0;x0<8;x0++)
             for(int y0=0;y0<8;y0++)
+            {
                 for(int x1=0;x1<8;x1++)
                     for(int y1=0;y1<8;y1++)
-                        if(eng->board_matrix[x0][y0]<0)
-                            if(eng->IsValidMove(x0,y0,x1,y1))
+                        if(board_matrix[x0][y0]<0)
+                            if(IsValidMove(x0,y0,x1,y1))
                             {
                                 //Do move
-                                int prev_0 = eng->board_matrix[x0][y0];
-                                int prev_1 = eng->board_matrix[x1][y1];
+                                int prev_0 = board_matrix[x0][y0];
+                                int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                eng->board_matrix[x0][y0]= 0;
-                                eng->board_matrix[x1][y1] = prev_0;
                                 pieces_lost1[prev_1]++;
 
-                                float value_evaluated = eng->minimize(2, max_depth, alpha, beta, no_prune-1);
+                                float value_evaluated = minimize(2, max_depth, alpha, beta, 0);
 
                                 if(value_evaluated > max_here)
                                 {
@@ -295,9 +211,10 @@ moves Engine::minimax_base(Engine *eng, int max_depth, float alpha, float beta, 
 
                                 //Undo move
                                 pieces_lost1[prev_1]--;
-                                eng->board_matrix[x0][y0] = prev_0;
-                                eng->board_matrix[x1][y1] = prev_1;
+
+                                UndoMove(prev_0, prev_1, x0, y0, x1, y1);
                             }
+            }
         return result;
     }
     else
@@ -306,23 +223,26 @@ moves Engine::minimax_base(Engine *eng, int max_depth, float alpha, float beta, 
 
 long unsigned int __stdcall Engine::AIThread(void *input)
 {
-    int t = time(NULL);
     Engine *main_engine = (Engine*)input;
     Engine *test_engine = new Engine(input);
     for(int i=0;i<8;i++)
         for(int j=0;j<8;j++)
             test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
-    printf("Thinking. Please wait. \n");
+    printf("Thinking. \n");
 
-    int t1 = 1;
     moves ai;
+    total_count = 0;
+    ai = test_engine->minimax_base(4, -100000000, 100000000);
 
-    ai = Engine::minimax_base(test_engine, 4, -100000000, 100000000, 0);
+    printf("Total leaves evaluated: %u\n\n", total_count);
     main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);
     main_engine->ProcessInput(ai.x0, ai.y0, ai.x1, ai.y1);
+
+    return 0;
 }
 
 void Engine::MakeAIMove()
 {
+    //AIThread(this);
     CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
 }

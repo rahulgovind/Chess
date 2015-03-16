@@ -31,23 +31,26 @@ bool Engine::IsValidMove(int x0, int y0, int x1, int y1)
 
 }
 
+bool Engine::PieceHasMoved(int init_x, int init_y)
+{
+    for(vector<moves>::iterator it = previous_moves.begin(); it!=previous_moves.end();++it)
+        if(it->x0==init_x && it->y0==init_y)
+            return true;
+    return false;
+}
+
 bool Engine::IsIllegal1(int x0, int y0, int x1, int y1)
 {
     bool result = false;
     //Make move and see if king is in check
     int prev_0 = board_matrix[x0][y0];
-    int prev_1 = board_matrix[x1][y1];
-
-    //Make move
-    board_matrix[x1][y1] = prev_0;
-    board_matrix[x0][y0] = 0;
+    int prev_1 = MakeMove(x0, y0, x1, y1);
 
     if(IsCheck1())
         result = true;
 
     //Undo move
-    board_matrix[x1][y1] = prev_1;
-    board_matrix[x0][y0] = prev_0;
+    UndoMove(prev_0, prev_1, x0, y0, x1, y1);
 
     return result;
 }
@@ -57,19 +60,13 @@ bool Engine::IsIllegal2(int x0, int y0, int x1, int y1)
     bool result = false;
     //Make move and see if king is in check
     int prev_0 = board_matrix[x0][y0];
-    int prev_1 = board_matrix[x1][y1];
-
-    //Make move
-    board_matrix[x1][y1] = prev_0;
-    board_matrix[x0][y0] = 0;
+    int prev_1 = MakeMove(x0, y0, x1, y1);
 
     if(IsCheck2())
         result = true;
 
     //Undo move
-    board_matrix[x1][y1] = prev_1;
-    board_matrix[x0][y0] = prev_0;
-
+    UndoMove(prev_0, prev_1, x0, y0, x1, y1);
     return result;
 }
 bool Engine::IsCheck1()
@@ -524,15 +521,17 @@ bool Engine::IsValidQueen2(int x0, int y0, int x1, int y1)
 
 bool Engine::IsValidKing1(int x0, int y0, int x1, int y1)
 {
-    if(board_matrix[x0][y0] == 6 && board_matrix[x1][y1]<=0)
+    if(board_matrix[x0][y0] == 6 && board_matrix[x1][y1]<=0 && !(x1==x0 && y1==y0))
+    {
         if(abs(x1-x0)<=1 && abs(y1-y0)<=1)
             return true;
+    }
     return false;
 }
 
 bool Engine::IsValidKing2(int x0, int y0, int x1, int y1)
 {
-    if(board_matrix[x0][y0] == -6 && board_matrix[x1][y1]>=0)
+    if(board_matrix[x0][y0] == -6 && board_matrix[x1][y1]>=0 && !(x1==x0 && y1==y0))
         if(abs(x1-x0)<=1 && abs(y1-y0)<=1)
             return true;
     return false;

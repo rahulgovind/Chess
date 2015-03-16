@@ -23,6 +23,7 @@ Engine::Engine(bool AI_mode)
     prev_ai_move.y1 = -1;
 
     ai_mode = AI_mode;
+    previous_moves.clear();
 }
 
 int Engine::GetGameStatus()
@@ -46,7 +47,7 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
     if((player1 && board_matrix[x0][y0]>0) || (!player1 && board_matrix[x0][y0]<0))
         if(IsValidMove(x0, y0, x1, y1))
         {
-            MakeMove(x0, y0, x1, y1);
+            MakeMoveAndSave(x0, y0, x1, y1);
             player1 = !player1;
 
             if((player1 && IsCheck1()) || (!player1 && IsCheck2()))
@@ -60,12 +61,18 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
                 game_status = GAME_STALEMATE;
 
             //Just for debugging
-            if(player1==false && ai_mode)
+            if(player1==false && ai_mode && game_status!=GAME_CHECKMATE && game_status!=GAME_STALEMATE)
             {
                 game_status = GAME_THINKING;
                 MakeAIMove();
             }
         }
+}
+
+int Engine::MakeMoveAndSave(int x0, int y0, int x1, int y1)
+{
+    previous_moves.push_back(moves(x0,y0,x1,y1));
+    return MakeMove(x0, y0, x1, y1);
 }
 
 int Engine::MakeMove(int x0, int y0, int x1, int y1)
@@ -74,7 +81,33 @@ int Engine::MakeMove(int x0, int y0, int x1, int y1)
     board_matrix[x1][y1] = board_matrix[x0][y0];
     board_matrix[x0][y0] = 0;
 
+
+    if(y1 == 7 && board_matrix[x1][y1] == 1)
+    {
+        //Handle pawn promotion
+        board_matrix[x1][y1] = 5;
+        temp = 7;
+    }
+    else if(y1 == 0 && board_matrix[x1][y1] == -1)
+    {
+        //Handle pawn promotion
+        board_matrix[x1][y1] = -5;
+        temp = -5;
+    }
     return temp;
+}
+
+void Engine::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
+{
+    //Handle pawn promotion
+    if(piece1 == 7)
+        piece1 = 0;
+    else if(piece1 == -7)
+        piece1 = 0;
+
+    board_matrix[x0][y0] = piece0;
+    board_matrix[x1][y1] = piece1;
+
 }
 
 moves Engine::GetAIMove()

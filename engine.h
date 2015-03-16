@@ -10,6 +10,9 @@
 #define GAME_THINKING 13
 
 #include <windows.h>
+#include <bits/stdc++.h>
+
+using namespace std;
 
 struct moves
 {
@@ -24,6 +27,8 @@ class Engine
 {
     int board_matrix[8][8];
     int game_status;
+    vector<moves> previous_moves;
+
     bool player1;
     bool IsValidMoveBase(int x0, int y0, int x1, int y1);
     bool IsValidPawn1(int x0, int y0, int x1, int y1);
@@ -47,12 +52,14 @@ class Engine
     bool IsStalemate2();
     bool IsCheck1();
     bool IsCheck2();
-
+    bool PieceHasMoved(int,int);
+    int MakeMoveAndSave(int x0, int y0, int x1, int y1);
     int MakeMove(int x0, int y0, int x1, int y1);
+    void UndoMove(int,int,int,int,int,int);
     void MakeAIMove();
-    static moves minimax_base(Engine*,int depth, float alpha, float beta, int no_prune);
-    float minimize(int depth, int max_depth,float alpha, float beta, int no_prune);
-    float maximize(int depth, int max_depth,float alpha, float beta, int no_prune);
+    moves minimax_base(int depth, float alpha, float beta);
+    float minimize(int depth, int max_depth,float alpha, float beta, int extra);
+    float maximize(int depth, int max_depth,float alpha, float beta, int extra);
     int CountPossibleMoves(bool);
     float EvaluateFunction();
 
