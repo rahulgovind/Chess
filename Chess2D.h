@@ -390,7 +390,7 @@ int Chess2D::StartGame()
 
         //glDrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(window);
-        glfwPollEvents();
+        glfwWaitEvents();
     }
 
     glfwDestroyWindow(window);

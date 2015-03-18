@@ -81,7 +81,6 @@ int Engine::MakeMove(int x0, int y0, int x1, int y1)
     board_matrix[x1][y1] = board_matrix[x0][y0];
     board_matrix[x0][y0] = 0;
 
-
     if(y1 == 7 && board_matrix[x1][y1] == 1)
     {
         //Handle pawn promotion
@@ -92,18 +91,19 @@ int Engine::MakeMove(int x0, int y0, int x1, int y1)
     {
         //Handle pawn promotion
         board_matrix[x1][y1] = -5;
-        temp = -5;
+        temp = -7;
     }
+
     return temp;
 }
 
 void Engine::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
 {
-    //Handle pawn promotion
-    if(piece1 == 7)
+    if(piece1 == 7 || piece1 == -7)
+    {
+        //Pawn promotion undo
         piece1 = 0;
-    else if(piece1 == -7)
-        piece1 = 0;
+    }
 
     board_matrix[x0][y0] = piece0;
     board_matrix[x1][y1] = piece1;

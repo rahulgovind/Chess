@@ -58,8 +58,8 @@ class Engine
     void UndoMove(int,int,int,int,int,int);
     void MakeAIMove();
     moves minimax_base(int depth, float alpha, float beta);
-    float minimize(int depth, int max_depth,float alpha, float beta, int extra);
-    float maximize(int depth, int max_depth,float alpha, float beta, int extra);
+    float minimize(int depth, int max_depth,float alpha, float beta);
+    float maximize(int depth, int max_depth,float alpha, float beta);
     int CountPossibleMoves(bool);
     float EvaluateFunction();
 

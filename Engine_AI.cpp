@@ -8,10 +8,10 @@ using namespace std;
 
 float values[] = { 0, 100, 300, 300, 500, 900, 100000};
 float mobility_value = 5;
-bool set_quies = true;
+
 int pieces_lost1[7];
 int pieces_lost2[7];
-float quies_factor = 0.25;
+
 bool first_move_played = false;
 int total_count = 0;
 
@@ -25,7 +25,7 @@ float Engine::EvaluateFunction()
     //Just for debugging
     total_count++;
 
-    result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
 
     return result;
 }
@@ -48,9 +48,9 @@ int Engine::CountPossibleMoves(bool player1)
 
 }
 
-float Engine::maximize(int depth, int max_depth, float alpha, float beta, int extra)
+float Engine::maximize(int depth, int max_depth, float alpha, float beta)
 {
-    if(depth<=max_depth+extra)
+    if(depth<=max_depth)
     {
         if(IsCheckmate2())
         {
@@ -80,15 +80,21 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta, int ex
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                    pieces_lost1[prev_1]++;
+                                    if(prev_1 == -7)
+                                        pieces_lost1[5]++;
+                                    else
+                                        pieces_lost1[prev_1]++;
 
-                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta, extra);
+                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta);
 
                                     max_here = max(value_evaluated, max_here);
                                     alpha = max(max_here, alpha);
 
                                     //Undo move
-                                    pieces_lost1[prev_1]--;
+                                    if(prev_1 == -7)
+                                        pieces_lost1[5]--;
+                                    else
+                                        pieces_lost1[prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
 
                                     if(beta<=alpha)
@@ -99,21 +105,13 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta, int ex
         }
     }
 
-    //Count total pieces lost
-    int total_pieces_lost = 0;
-    for(int i=1;i<=6;i++)
-        total_pieces_lost+=pieces_lost1[i] + pieces_lost2[i];
-    extra = (int)(quies_factor*total_pieces_lost);
-    if(depth<=max_depth+extra && set_quies)
-        return maximize(depth, max_depth, alpha, beta, extra);
-
     return EvaluateFunction();
 }
 
-float Engine::minimize(int depth, int max_depth, float alpha, float beta, int extra)
+float Engine::minimize(int depth, int max_depth, float alpha, float beta)
 {
 
-    if(depth<=max_depth+extra)
+    if(depth<=max_depth)
     {
         if(IsCheckmate1())
         {
@@ -137,19 +135,23 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta, int ex
                                       //Do move
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
+
                                     if(prev_1 == 7)
                                         pieces_lost2[5]++;
                                     else
                                         pieces_lost2[-prev_1]++;
 
-                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta, extra);
+                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta);
 
 
                                     min_here = min(value_evaluated, min_here);
                                     beta = min(min_here, beta);
 
                                     //Undo move
-                                    pieces_lost2[-prev_1]--;
+                                    if(prev_1 == 7)
+                                        pieces_lost2[5]--;
+                                    else
+                                        pieces_lost2[-prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
 
 
@@ -160,14 +162,6 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta, int ex
             return min_here;
         }
     }
-
-    //Count total pieces lost
-    int total_pieces_lost = 0;
-    for(int i=1;i<=6;i++)
-        total_pieces_lost+=pieces_lost1[i] + pieces_lost2[i];
-    extra = (int)(quies_factor*total_pieces_lost);
-    if(depth<=max_depth+extra && set_quies)
-        return minimize(depth, max_depth, alpha, beta, extra);
     return EvaluateFunction();
 }
 
@@ -179,7 +173,7 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
         pieces_lost2[i] = 0;
     }
 
-    moves result;
+    moves result{0,0,0,0};
     if (!(IsCheckmate2()) && !(IsStalemate1()))
     {
         float max_here = -100000000;
@@ -195,9 +189,12 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
                                 int prev_0 = board_matrix[x0][y0];
                                 int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                pieces_lost1[prev_1]++;
+                                if(prev_1 == -7)
+                                    pieces_lost1[5]++;
+                                else
+                                    pieces_lost1[prev_1]++;
 
-                                float value_evaluated = minimize(2, max_depth, alpha, beta, 0);
+                                float value_evaluated = minimize(2, max_depth, alpha, beta);
 
                                 if(value_evaluated > max_here)
                                 {
@@ -210,15 +207,17 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
                                 alpha = max(max_here, alpha);
 
                                 //Undo move
-                                pieces_lost1[prev_1]--;
+                                if(prev_1 == -7)
+                                    pieces_lost1[5]--;
+                                else
+                                    pieces_lost1[prev_1]--;
 
                                 UndoMove(prev_0, prev_1, x0, y0, x1, y1);
                             }
             }
-        return result;
     }
-    else
-        return moves(0,0,0,0);
+
+    return result;
 }
 
 long unsigned int __stdcall Engine::AIThread(void *input)
@@ -243,6 +242,6 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
 void Engine::MakeAIMove()
 {
-    //AIThread(this);
-    CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+    AIThread(this);
+    //CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
 }
