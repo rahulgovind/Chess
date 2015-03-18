@@ -5,7 +5,7 @@ int abs(int x)
     return (x>=0) ? x : -x;
 }
 
-//Doesn't look at current player
+//Doesn't look at which player is playing currently
 bool Engine::IsValidMove(int x0, int y0, int x1, int y1)
 {
     if(IsValidMoveBase(x0, y0, x1, y1))
@@ -26,6 +26,27 @@ bool Engine::IsValidMove(int x0, int y0, int x1, int y1)
             else
                 return true;
         }
+    }
+
+    //Castling
+    switch(board_matrix[x0][y0])
+    {
+    case 6:
+        if(IsValidCastle1(x0, y0, x1, y1))
+            return true;
+        break;
+    case -6:
+        if(IsValidCastle2(x0, y0, x1, y1))
+            return true;
+        break;
+    case 1:
+        if(IsValidEnPassant1(x0, y0, x1, y1))
+            return true;
+        break;
+    case -1:
+        if(IsValidEnPassant2(x0, y0, x1, y1))
+            return true;
+        break;
     }
     return false;
 
@@ -534,5 +555,190 @@ bool Engine::IsValidKing2(int x0, int y0, int x1, int y1)
     if(board_matrix[x0][y0] == -6 && board_matrix[x1][y1]>=0 && !(x1==x0 && y1==y0))
         if(abs(x1-x0)<=1 && abs(y1-y0)<=1)
             return true;
+    return false;
+}
+
+bool Engine::IsValidCastle1(int x0, int y0, int x1, int y1)
+{
+    if(board_matrix[x0][y0] == 6 && (x0==4 && y0==0) && y1==0)
+    {
+        if(x1==6)
+        {
+            //Near castling
+            //Check final spots and spots in between
+            if(board_matrix[7][0]==4 && board_matrix[6][0]==0 && board_matrix[5][0]==0)
+            {
+                //Check if king is not currently in check, and the king and respective rook haven't ever moved
+                if(IsCheck1()==false && PieceHasMoved(4,0)==false && PieceHasMoved(7,0)==false)
+                {
+
+                    bool result = true;
+
+                    board_matrix[4][0] = 0;
+                    board_matrix[5][0] = 6;
+                    if(IsCheck1())
+                        result = false;
+                    board_matrix[5][0] = 0;
+                    board_matrix[4][0] = 6;
+
+
+                    board_matrix[4][0] = 0;
+                    board_matrix[6][0] = 6;
+                    if(IsCheck1())
+                        result = false;
+                    board_matrix[6][0] = 0;
+                    board_matrix[4][0] = 6;
+
+
+                    return result;
+                }
+            }
+        }
+        else if(x1==2)
+        {
+            //Far castling
+            if(board_matrix[0][0]==4 && board_matrix[1][0]==0 && board_matrix[2][0]==0 && board_matrix[3][0]==0)
+            {
+                //Check if king is not currently in check, and the king and respective rook haven't ever moved
+                if(IsCheck1()==false && PieceHasMoved(4,0)==false && PieceHasMoved(0,0)==false)
+                {
+                    bool result = true;
+                    //Check if spots in between are not in check
+                    board_matrix[4][0] = 0;
+                    board_matrix[3][0] = 6;
+                    if(IsCheck1())
+                        result = false;
+                    board_matrix[3][0] = 0;
+                    board_matrix[4][0] = 6;
+
+
+                    board_matrix[4][0] = 0;
+                    board_matrix[2][0] = 6;
+                    if(IsCheck1())
+                        result = false;
+                    board_matrix[2][0] = 0;
+                    board_matrix[4][0] = 6;
+
+                    return result;
+                }
+            }
+        }
+
+    }
+    return false;
+}
+
+
+bool Engine::IsValidCastle2(int x0, int y0, int x1, int y1)
+{
+    if(board_matrix[x0][y0] == -6 && (x0==4 && y0==7) && y1==7)
+    {
+        if(x1==6)
+        {
+            //Near castling
+            //Check final spots and spots in between
+            if(board_matrix[7][7]==-4 && board_matrix[6][7]==0 && board_matrix[5][7]==0)
+            {
+                //Check if king is not currently in check, and the king and respective rook haven't ever moved
+                if(IsCheck2()==false && PieceHasMoved(4,7)==false && PieceHasMoved(7,7)==false)
+                {
+
+                    bool result = true;
+
+                    board_matrix[4][7] = 0;
+                    board_matrix[5][7] = -6;
+                    if(IsCheck2())
+                        result = false;
+                    board_matrix[5][7] = 0;
+                    board_matrix[4][7] = -6;
+
+
+                    board_matrix[4][7] = 0;
+                    board_matrix[6][7] = -6;
+                    if(IsCheck2())
+                        result = false;
+                    board_matrix[6][7] = 0;
+                    board_matrix[4][7] = -6;
+
+
+                    return result;
+                }
+            }
+        }
+        else if(x1==2)
+        {
+            //Far castling
+            if(board_matrix[0][7]==-4 && board_matrix[1][7]==0 && board_matrix[2][7]==0 && board_matrix[3][7]==0)
+            {
+                //Check if king is not currently in check, and the king and respective rook haven't ever moved
+                if(IsCheck2()==false && PieceHasMoved(4,7)==false && PieceHasMoved(0,7)==false)
+                {
+                    bool result = true;
+                    //Check if spots in between are not in check
+                    board_matrix[4][7] = 0;
+                    board_matrix[3][7] = -6;
+                    if(IsCheck2())
+                        result = false;
+                    board_matrix[3][7] = 0;
+                    board_matrix[4][7] = -6;
+
+
+                    board_matrix[4][7] = 0;
+                    board_matrix[2][7] = -6;
+                    if(IsCheck2())
+                        result = false;
+                    board_matrix[2][7] = 0;
+                    board_matrix[4][7] = -6;
+
+                    return result;
+                }
+            }
+        }
+
+    }
+    return false;
+}
+
+bool Engine::IsValidEnPassant1(int x0, int y0, int x1, int y1)
+{
+    if(board_matrix[x0][y0] == 1 && y0==4 && y1==5)
+    {
+        //Check if cross move
+        if(abs(x1 - x0) == 1 && board_matrix[x1][5]==0)
+        {
+            if(board_matrix[x1][4] == -1)
+            {
+                //Check if previous move is the two step forward pawn move
+                moves prev_move = previous_moves.back();
+
+                if(prev_move.x0 == x1 && prev_move.y0 == 6 && prev_move.x1 == x1 && prev_move.y1 == 4)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool Engine::IsValidEnPassant2(int x0, int y0, int x1, int y1)
+{
+    if(board_matrix[x0][y0] ==-1 && y0==3 && y1==2)
+    {
+        //Check if cross move
+        if(abs(x1 - x0) == 1 && board_matrix[x1][2]==0)
+        {
+            if(board_matrix[x1][3] == 1)
+            {
+                //Check if previous move is the two step forward pawn move
+                moves prev_move = previous_moves.back();
+
+                if(prev_move.x0 == x1 && prev_move.y0 == 1 && prev_move.x1 == x1 && prev_move.y1 == 3)
+                {
+                    return true;
+                }
+            }
+        }
+    }
     return false;
 }

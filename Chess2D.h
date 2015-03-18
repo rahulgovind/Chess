@@ -90,7 +90,7 @@ private:
     static bool single_player_mode;
 
 public:
-    Chess2D(int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
+    Chess2D(bool single_player=true,int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
 
     int StartGame();
 
@@ -120,10 +120,11 @@ bool Chess2D::prev_selected = false;
 int Chess2D::current_player = 1;
 int Chess2D::prev_game_state = 0;
 
-bool Chess2D::single_player_mode = true;
+bool Chess2D::single_player_mode = false;
 //Load vertex shader, Fragment shader, set glfw window hints, initialize data
-Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
+Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int boardheight)
 {
+    single_player_mode = single_player;
     window_width = width;
     window_height = height;
     board_width = (float)boardwidth*2/window_width;
@@ -183,7 +184,7 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     num_elements = 8*8*6;
 
     //Load engine for chess
-    engine = new Engine(true);
+    engine = new Engine(single_player_mode);
     LoadBoardColor();
     LoadPieceTextures();
 

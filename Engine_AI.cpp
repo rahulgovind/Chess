@@ -15,16 +15,23 @@ int pieces_lost2[7];
 bool first_move_played = false;
 int total_count = 0;
 
+bool castled1 = false;
+bool castled2 = false;
 float Engine::EvaluateFunction()
 {
-    float result = 0;
-
-    for(int i=1;i<=6;i++)
-        result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
-
     //Just for debugging
     total_count++;
 
+    float result = 0;
+    for(int i=1;i<=6;i++)
+        result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
+
+
+    //Add castling bonus
+    if(castled1)
+        result-=50;
+    if(castled2)
+        result+=50;
     result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
 
     return result;
@@ -82,6 +89,10 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta)
 
                                     if(prev_1 == -7)
                                         pieces_lost1[5]++;
+                                    else if(prev_1 == -8)
+                                        castled2 = true;
+                                    else if(prev_1 == -9)
+                                        pieces_lost1[1]++;
                                     else
                                         pieces_lost1[prev_1]++;
 
@@ -93,6 +104,10 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta)
                                     //Undo move
                                     if(prev_1 == -7)
                                         pieces_lost1[5]--;
+                                    else if(prev_1 == -8)
+                                        castled2 = false;
+                                    else if(prev_1 == -9)
+                                        pieces_lost1[1]--;
                                     else
                                         pieces_lost1[prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
@@ -138,6 +153,10 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
 
                                     if(prev_1 == 7)
                                         pieces_lost2[5]++;
+                                    else if(prev_1 == 8)
+                                        castled1 = true;
+                                    else if(prev_1 == 9)
+                                        pieces_lost2[1]++;
                                     else
                                         pieces_lost2[-prev_1]++;
 
@@ -150,6 +169,10 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
                                     //Undo move
                                     if(prev_1 == 7)
                                         pieces_lost2[5]--;
+                                    else if(prev_1 == 8)
+                                        castled1 = false;
+                                    else if(prev_1 == 9)
+                                        pieces_lost2[1]--;
                                     else
                                         pieces_lost2[-prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
@@ -191,6 +214,10 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
 
                                 if(prev_1 == -7)
                                     pieces_lost1[5]++;
+                                else if(prev_1 == -8)
+                                    castled2 = true;
+                                else if(prev_1 == -9)
+                                    pieces_lost1[1]++;
                                 else
                                     pieces_lost1[prev_1]++;
 
@@ -209,6 +236,10 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
                                 //Undo move
                                 if(prev_1 == -7)
                                     pieces_lost1[5]--;
+                                else if(prev_1 == -8)
+                                    castled2 = false;
+                                else if(prev_1 == -9)
+                                    pieces_lost1[1]--;
                                 else
                                     pieces_lost1[prev_1]--;
 
@@ -227,6 +258,7 @@ long unsigned int __stdcall Engine::AIThread(void *input)
     for(int i=0;i<8;i++)
         for(int j=0;j<8;j++)
             test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
+    test_engine->previous_moves = main_engine->previous_moves;
     printf("Thinking. \n");
 
     moves ai;

@@ -3,16 +3,18 @@
 #ifndef _ENGINE_H
 #define _ENGINE_H
 
-#define GAME_NORMAL 9
-#define GAME_CHECKMATE 10
-#define GAME_STALEMATE 11
-#define GAME_CHECK 12
-#define GAME_THINKING 13
 
 #include <windows.h>
 #include <bits/stdc++.h>
 
 using namespace std;
+
+#define GAME_NORMAL 9
+#define GAME_CHECKMATE 10
+#define GAME_STALEMATE 11
+#define GAME_CHECK 12
+#define GAME_THINKING 13
+#define ENGINE_DEBUG true
 
 struct moves
 {
@@ -53,7 +55,10 @@ class Engine
     bool IsCheck1();
     bool IsCheck2();
     bool PieceHasMoved(int,int);
-    int MakeMoveAndSave(int x0, int y0, int x1, int y1);
+    bool IsValidCastle1(int,int,int,int);
+    bool IsValidCastle2(int,int,int,int);
+    bool IsValidEnPassant1(int,int,int,int);
+    bool IsValidEnPassant2(int,int,int,int);
     int MakeMove(int x0, int y0, int x1, int y1);
     void UndoMove(int,int,int,int,int,int);
     void MakeAIMove();
