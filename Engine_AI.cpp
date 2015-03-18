@@ -25,7 +25,7 @@ float Engine::EvaluateFunction()
     //Just for debugging
     total_count++;
 
-    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+    result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
 
     return result;
 }
@@ -231,9 +231,10 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
     moves ai;
     total_count = 0;
-    ai = test_engine->minimax_base(4, -100000000, 100000000);
 
-    printf("Total leaves evaluated: %u\n\n", total_count);
+    ai = test_engine->minimax_base(4, -100000000, 100000000);
+    printf("Total leaves evaluated: %u\n",total_count);
+
     main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);
     main_engine->ProcessInput(ai.x0, ai.y0, ai.x1, ai.y1);
 
@@ -242,6 +243,7 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
 void Engine::MakeAIMove()
 {
-    AIThread(this);
-    //CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+    //AIThread(this);
+
+    CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
 }

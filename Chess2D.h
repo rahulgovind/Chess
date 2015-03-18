@@ -14,6 +14,7 @@
 
 using namespace std;
 
+#define EVENT_PROCESS_WAIT_TIME 0.03
 
 struct RGBA
 {
@@ -344,6 +345,8 @@ int Chess2D::StartGame()
     prev_game_state = engine->GetGameStatus();
     current_player = engine->GetCurrentPlayer();
 
+    double prev_event_time = glfwGetTime();
+
     while(!glfwWindowShouldClose(window))
     {
         if(glfwGetKey(window, GLFW_KEY_ESCAPE)==GLFW_PRESS)
@@ -390,7 +393,10 @@ int Chess2D::StartGame()
 
         //glDrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(window);
-        glfwWaitEvents();
+        while(glfwGetTime()-prev_event_time<EVENT_PROCESS_WAIT_TIME)
+            Sleep(1);
+        prev_event_time = glfwGetTime();
+        glfwPollEvents();
     }
 
     glfwDestroyWindow(window);
