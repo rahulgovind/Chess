@@ -1,43 +1,57 @@
 #include "engine_ai.h"
 
 const int values[] = { 0, 100, 300, 300, 500, 900, 100000};
-const int mobility_value = 5;
 
+const int mobility_value = 5;
+const int castle_value = 40;
+const int early_queen = 60;
+const int bishop_long_diagonal = 30;
+const int developed_knight = 20;
+const int double_bishop = 80;
+const int doubled_pawn = 30;
+const int pawn_forward_bonus = 5;
 
 moves EngineAI::GetBestMove(int level)
 {
     total_moves = 0;
+    quies_extra_max = 0;
     moves result;
     this->level = level;
-
-    //Decide game stage
-    if(previous_moves.size()<20)
-    {
-
-        stage = AI_OPENING;
-    }
-    else if(previous_moves.size()>35)
-    {
-        stage = AI_END_GAME;
-    }
-    else
-    {
-        stage = AI_MIDDLE_GAME;
-    }
+    int max_d;
     //Game difficulty
     switch(level)
     {
     case AI_EASY:
-        result = minimax_base(3);
+        max_d = 2;
         break;
     case AI_MEDIUM:
-        result = minimax_base(4);
+        max_d = 3;
         break;
     case AI_HARD:
-        result = minimax_base(5);
+        max_d = 4;
         break;
     }
-    return result;
+    //Decide game stage
+    if(previous_moves.size()<20)
+    {
+        quies_factor = 0.5;
+        stage = AI_OPENING;
+    }
+    else if(previous_moves.size()>35)
+    {
+        quies_factor = 0.25;
+        max_d+=3;
+        stage = AI_END_GAME;
+    }
+    else
+    {
+        quies_factor = 0.4;
+        max_d++;
+        stage = AI_MIDDLE_GAME;
+    }
+    //Game difficulty
+
+    return minimax_base(max_d);
 }
 
 void EngineAI::PrintInfo()
@@ -55,7 +69,23 @@ void EngineAI::PrintInfo()
         printf("Hard\n");
         break;
     }
+    printf("Game stage: ");
+    switch(stage)
+    {
+    case AI_OPENING:
+        printf("Opening\n");
+        break;
+    case AI_MIDDLE_GAME:
+        printf("Middle game\n");
+        break;
+    case AI_END_GAME:
+        printf("End game\n");
+        break;
+    }
     printf("Total leaves evaluated: %u\n", total_moves);
+    printf("Maximum extra moves for quiescence: %u\n", quies_extra_max);
+
+    printf("\n");
 
 }
 int EngineAI::EvaluateOpening()
@@ -70,10 +100,52 @@ int EngineAI::EvaluateOpening()
 
     //Add castling bonus
     if(castled1)
-        result-=50;
+        result-=castle_value;
     if(castled2)
-        result+=50;
-    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+        result+=castle_value;
+
+    //mobility
+    result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+
+    //Early Queen
+    if(board_matrix[3][0]!=5)
+        result+=early_queen;
+    if(board_matrix[3][7]!=-5)
+        result-=early_queen;
+
+    //Doubled pawn
+    for(int x=0;x<8;x++)
+    {
+        bool white_pawn = false;
+        bool black_pawn = false;
+        for(int y=0;y<8;y++)
+        {
+            if(board_matrix[x][y]==1)
+            {
+                if(white_pawn)
+                    result+=doubled_pawn;
+                else
+                    white_pawn=true;
+            }
+            else if(board_matrix[x][y]==-1)
+            {
+                if(black_pawn)
+                    result-=doubled_pawn;
+                else
+                    black_pawn=true;
+            }
+        }
+    }
+
+    //Developed knight
+    if(board_matrix[1][0]!=3)
+        result-=developed_knight;
+    if(board_matrix[6][0]!=3)
+        result-=developed_knight;
+    if(board_matrix[1][7]!=-3)
+        result+=developed_knight;
+    if(board_matrix[6][7]!=-3)
+        result+=developed_knight;
 
     return result;
 }
@@ -85,13 +157,36 @@ int EngineAI::EvaluateMiddleGame()
     for(int i=1;i<=6;i++)
         result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
 
+    //Double bishop
+    if(pieces_lost1[2]==1)
+        result+=double_bishop;
+    if(pieces_lost2[2]==1)
+        result-=double_bishop;
 
-    //Add castling bonus
-    if(castled1)
-        result-=50;
-    if(castled2)
-        result+=50;
-    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+    //Doubled pawn
+    for(int x=0;x<8;x++)
+    {
+        bool white_pawn = false;
+        bool black_pawn = false;
+        for(int y=0;y<8;y++)
+        {
+            if(board_matrix[x][y]==1)
+            {
+                if(white_pawn)
+                    result+=doubled_pawn;
+                else
+                    white_pawn=true;
+            }
+            else if(board_matrix[x][y]==-1)
+            {
+                if(black_pawn)
+                    result-=doubled_pawn;
+                else
+                    black_pawn=true;
+            }
+        }
+    }
+
 
     return result;
 }
@@ -103,14 +198,39 @@ int EngineAI::EvaluateEndGame()
     for(int i=1;i<=6;i++)
         result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
 
+    //Doubled pawn
+    for(int x=0;x<8;x++)
+    {
+        bool white_pawn = false;
+        bool black_pawn = false;
+        for(int y=0;y<8;y++)
+        {
+            if(board_matrix[x][y]==1)
+            {
+                if(white_pawn)
+                    result+=doubled_pawn;
+                else
+                    white_pawn=true;
+            }
+            else if(board_matrix[x][y]==-1)
+            {
+                if(black_pawn)
+                    result-=doubled_pawn;
+                else
+                    black_pawn=true;
+            }
+        }
+    }
 
-    //Add castling bonus
-    if(castled1)
-        result-=50;
-    if(castled2)
-        result+=50;
-    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
-
+    //Favor pawn movement
+    for(int x=0;x<8;x++)
+        for(int y=0;y<8;y++)
+        {
+            if(board_matrix[x][y]==1)
+                result-=pawn_forward_bonus*(y);
+            if(board_matrix[x][y]==-1)
+                result+=pawn_forward_bonus*(8-y);
+        }
     return result;
 }
 
@@ -146,9 +266,9 @@ int EngineAI::CountPossibleMoves(bool player1)
 
 }
 
-int EngineAI::maximize(int depth, int max_depth, int alpha, int beta)
+int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
 {
-    if(depth<=max_depth)
+    if(depth<=max_depth+extra)
     {
         if(IsCheckmate2())
         {
@@ -187,7 +307,7 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta)
                                     else
                                         pieces_lost1[prev_1]++;
 
-                                    int value_evaluated = minimize(depth+1, max_depth, alpha, beta);
+                                    int value_evaluated = minimize(depth+1, max_depth, alpha, beta, extra);
 
                                     max_here = max(value_evaluated, max_here);
                                     alpha = max(max_here, alpha);
@@ -211,13 +331,24 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta)
         }
     }
 
+    //Quiescence
+    int total_pieces_lost = 0;
+    for(int i=1;i<=6;i++)
+        total_pieces_lost+= pieces_lost1[i] + pieces_lost2[i];
+
+    extra = quies_factor*(float)total_pieces_lost;
+    if(depth<=max_depth+extra)
+    {
+        quies_extra_max = max(extra, quies_extra_max);
+        return maximize(depth, max_depth, alpha, beta, extra);
+    }
     return EvaluateFunction();
 }
 
-int EngineAI::minimize(int depth, int max_depth, int alpha, int beta)
+int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
 {
 
-    if(depth<=max_depth)
+    if(depth<=max_depth+extra)
     {
         if(IsCheckmate1())
         {
@@ -251,7 +382,7 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta)
                                     else
                                         pieces_lost2[-prev_1]++;
 
-                                    int value_evaluated = maximize(depth+1, max_depth, alpha, beta);
+                                    int value_evaluated = maximize(depth+1, max_depth, alpha, beta, extra);
 
 
                                     min_here = min(value_evaluated, min_here);
@@ -275,6 +406,18 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta)
                                 }
             return min_here;
         }
+    }
+
+    //Quiescence
+    int total_pieces_lost = 0;
+    for(int i=1;i<=6;i++)
+        total_pieces_lost+= pieces_lost1[i] + pieces_lost2[i];
+
+    extra = quies_factor*(float)total_pieces_lost;
+    if(depth<=max_depth+extra)
+    {
+        quies_extra_max = max(extra, quies_extra_max);
+        return minimize(depth, max_depth, alpha, beta, extra);
     }
     return EvaluateFunction();
 }
@@ -312,7 +455,7 @@ moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
                                 else
                                     pieces_lost1[prev_1]++;
 
-                                int value_evaluated = minimize(2, max_depth, alpha, beta);
+                                int value_evaluated = minimize(2, max_depth, alpha, beta, 0);
 
                                 if(value_evaluated > max_here)
                                 {

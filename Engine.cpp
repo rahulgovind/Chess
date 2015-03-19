@@ -227,11 +227,10 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
     float init_time = (float)clock()/CLOCKS_PER_SEC;
 
-    ai = test_engine->GetBestMove();
+    ai = test_engine->GetBestMove(AI_MEDIUM);
     test_engine->PrintInfo();
-    //printf("Total leaves evaluated: %u\n",total_count);
-    printf("Total time %f\n", (float)clock()/CLOCKS_PER_SEC - init_time);
-    init_time = (float)clock()/CLOCKS_PER_SEC;
+
+
 
 
     main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);

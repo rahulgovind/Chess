@@ -508,6 +508,7 @@ void Chess2D::LoadPieceTextures()
 
 void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mods)
 {
+    //Not take inputs when computer is thinking
     if(action ==GLFW_PRESS && engine->GetGameStatus()!=GAME_THINKING)
     {
         double x,y;
