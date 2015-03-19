@@ -1,28 +1,69 @@
-#include "engine.h"
-#include <bits/stdc++.h>
-#include <windows.h>
-#include <ctime>
+#include "engine_ai.h"
 
-//Killer moves heuristic removed
-using namespace std;
+const int values[] = { 0, 100, 300, 300, 500, 900, 100000};
+const int mobility_value = 5;
 
-float values[] = { 0, 100, 300, 300, 500, 900, 100000};
-float mobility_value = 5;
 
-int pieces_lost1[7];
-int pieces_lost2[7];
-
-bool first_move_played = false;
-int total_count = 0;
-
-bool castled1 = false;
-bool castled2 = false;
-float Engine::EvaluateFunction()
+moves EngineAI::GetBestMove(int level)
 {
-    //Just for debugging
-    total_count++;
+    total_moves = 0;
+    moves result;
+    this->level = level;
 
-    float result = 0;
+    //Decide game stage
+    if(previous_moves.size()<20)
+    {
+
+        stage = AI_OPENING;
+    }
+    else if(previous_moves.size()>35)
+    {
+        stage = AI_END_GAME;
+    }
+    else
+    {
+        stage = AI_MIDDLE_GAME;
+    }
+    //Game difficulty
+    switch(level)
+    {
+    case AI_EASY:
+        result = minimax_base(3);
+        break;
+    case AI_MEDIUM:
+        result = minimax_base(4);
+        break;
+    case AI_HARD:
+        result = minimax_base(5);
+        break;
+    }
+    return result;
+}
+
+void EngineAI::PrintInfo()
+{
+    printf("AI level: ");
+    switch(level)
+    {
+    case AI_EASY:
+        printf("Easy\n");
+        break;
+    case AI_MEDIUM:
+        printf("Medium\n");
+        break;
+    case AI_HARD:
+        printf("Hard\n");
+        break;
+    }
+    printf("Total leaves evaluated: %u\n", total_moves);
+
+}
+int EngineAI::EvaluateOpening()
+{
+
+    int result = 0;
+
+    //Relative piece values
     for(int i=1;i<=6;i++)
         result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
 
@@ -32,12 +73,62 @@ float Engine::EvaluateFunction()
         result-=50;
     if(castled2)
         result+=50;
-    result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
 
     return result;
 }
 
-int Engine::CountPossibleMoves(bool player1)
+int EngineAI::EvaluateMiddleGame()
+{
+
+    int result = 0;
+    for(int i=1;i<=6;i++)
+        result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
+
+
+    //Add castling bonus
+    if(castled1)
+        result-=50;
+    if(castled2)
+        result+=50;
+    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+
+    return result;
+}
+
+int EngineAI::EvaluateEndGame()
+{
+
+    int result = 0;
+    for(int i=1;i<=6;i++)
+        result += values[i]*(pieces_lost1[i] - pieces_lost2[i]);
+
+
+    //Add castling bonus
+    if(castled1)
+        result-=50;
+    if(castled2)
+        result+=50;
+    //result += mobility_value*(CountPossibleMoves(false) - CountPossibleMoves(true));
+
+    return result;
+}
+
+int EngineAI::EvaluateFunction()
+{
+    total_moves++;
+    switch(stage)
+    {
+    case AI_OPENING:
+        return EvaluateOpening();
+    case AI_MIDDLE_GAME:
+        return EvaluateMiddleGame();
+    case AI_END_GAME:
+        return EvaluateEndGame();
+    }
+}
+
+int EngineAI::CountPossibleMoves(bool player1)
 {
     int result = 0;
      for(int x0=0;x0<8;x0++)
@@ -55,7 +146,7 @@ int Engine::CountPossibleMoves(bool player1)
 
 }
 
-float Engine::maximize(int depth, int max_depth, float alpha, float beta)
+int EngineAI::maximize(int depth, int max_depth, int alpha, int beta)
 {
     if(depth<=max_depth)
     {
@@ -73,7 +164,7 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta)
         }
         else
         {
-            float max_here = -100000000;
+            int max_here = -100000000;
 
             //Normal minimax with alpha - beta pruning
             for(int x0=0;x0<8;x0++)
@@ -96,7 +187,7 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta)
                                     else
                                         pieces_lost1[prev_1]++;
 
-                                    float value_evaluated = minimize(depth+1, max_depth, alpha, beta);
+                                    int value_evaluated = minimize(depth+1, max_depth, alpha, beta);
 
                                     max_here = max(value_evaluated, max_here);
                                     alpha = max(max_here, alpha);
@@ -123,7 +214,7 @@ float Engine::maximize(int depth, int max_depth, float alpha, float beta)
     return EvaluateFunction();
 }
 
-float Engine::minimize(int depth, int max_depth, float alpha, float beta)
+int EngineAI::minimize(int depth, int max_depth, int alpha, int beta)
 {
 
     if(depth<=max_depth)
@@ -131,7 +222,7 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
         if(IsCheckmate1())
         {
             pieces_lost1[6]++;
-            float result = EvaluateFunction();
+            int result = EvaluateFunction();
             pieces_lost1[6]--;
             return result;
         }
@@ -139,7 +230,7 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
             return EvaluateFunction();
         else
         {
-            float min_here = 100000000;
+            int min_here = 100000000;
             for(int x0=0;x0<8;x0++)
                 for(int y0=0;y0<8;y0++)
                     for(int x1=0;x1<8;x1++)
@@ -160,7 +251,7 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
                                     else
                                         pieces_lost2[-prev_1]++;
 
-                                    float value_evaluated = maximize(depth+1, max_depth, alpha, beta);
+                                    int value_evaluated = maximize(depth+1, max_depth, alpha, beta);
 
 
                                     min_here = min(value_evaluated, min_here);
@@ -188,7 +279,7 @@ float Engine::minimize(int depth, int max_depth, float alpha, float beta)
     return EvaluateFunction();
 }
 
-moves Engine::minimax_base(int max_depth, float alpha, float beta)
+moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
 {
     for(int i=0;i<7;i++)
     {
@@ -199,7 +290,7 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
     moves result{0,0,0,0};
     if (!(IsCheckmate2()) && !(IsStalemate1()))
     {
-        float max_here = -100000000;
+        int max_here = -100000000;
         for(int x0=0;x0<8;x0++)
             for(int y0=0;y0<8;y0++)
             {
@@ -221,7 +312,7 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
                                 else
                                     pieces_lost1[prev_1]++;
 
-                                float value_evaluated = minimize(2, max_depth, alpha, beta);
+                                int value_evaluated = minimize(2, max_depth, alpha, beta);
 
                                 if(value_evaluated > max_here)
                                 {
@@ -251,31 +342,4 @@ moves Engine::minimax_base(int max_depth, float alpha, float beta)
     return result;
 }
 
-long unsigned int __stdcall Engine::AIThread(void *input)
-{
-    Engine *main_engine = (Engine*)input;
-    Engine *test_engine = new Engine(input);
-    for(int i=0;i<8;i++)
-        for(int j=0;j<8;j++)
-            test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
-    test_engine->previous_moves = main_engine->previous_moves;
-    printf("Thinking. \n");
 
-    moves ai;
-    total_count = 0;
-
-    ai = test_engine->minimax_base(4, -100000000, 100000000);
-    printf("Total leaves evaluated: %u\n",total_count);
-
-    main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);
-    main_engine->ProcessInput(ai.x0, ai.y0, ai.x1, ai.y1);
-
-    return 0;
-}
-
-void Engine::MakeAIMove()
-{
-    //AIThread(this);
-
-    CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
-}

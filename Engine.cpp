@@ -1,21 +1,12 @@
 #include "engine.h"
+#include "engine_ai.h"
 
 #include <fstream>
 
-int initial_board[8][8] ={{ 4,  1,  0,  0,  0,  0,  -1, -4 },
-                          { 3,  1,  0,  0,  0,  0,  -1, -3 },
-                          { 2,  1,  0,  0,  0,  0,  -1, -2 },
-                          { 5,  1,  0,  0,  0,  0,  -1, -5 },
-                          { 6,  1,  0,  0,  0,  0,  -1, -6 },
-                          { 2,  1,  0,  0,  0,  0,  -1, -2 },
-                          { 3,  1,  0,  0,  0,  0,  -1, -3 },
-                          { 4,  1,  0,  0,  0,  0,  -1, -4 } };
 
-Engine::Engine(bool AI_mode)
+Engine::Engine(bool AI_mode):Board()
 {
-    for(int i=0;i<8;i++)
-        for(int j=0;j<8;j++)
-            board_matrix[i][j] = initial_board[i][j];
+
     player1 = true;
     game_status = GAME_NORMAL;
 
@@ -25,9 +16,6 @@ Engine::Engine(bool AI_mode)
     prev_ai_move.y1 = -1;
 
     ai_mode = AI_mode;
-    previous_moves.clear();
-
-
 }
 
 int Engine::GetGameStatus()
@@ -91,7 +79,7 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
 }
 
 
-int Engine::MakeMove(int x0, int y0, int x1, int y1)
+int Board::MakeMove(int x0, int y0, int x1, int y1)
 {
     previous_moves.push_back(moves(x0,y0,x1,y1)); //Temporary
     int temp = board_matrix[x1][y1];
@@ -160,7 +148,7 @@ int Engine::MakeMove(int x0, int y0, int x1, int y1)
     return temp;
 }
 
-void Engine::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
+void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
 {
     previous_moves.pop_back(); //temporary
     if(piece1 == 7 || piece1 == -7)
@@ -221,4 +209,40 @@ moves Engine::GetAIMove()
 }
 
 
+long unsigned int __stdcall Engine::AIThread(void *input)
+{
+    Engine *main_engine = (Engine*)input;
 
+    EngineAI *test_engine = new EngineAI((*(Board*)main_engine));
+
+    /*
+    for(int i=0;i<8;i++)
+        for(int j=0;j<8;j++)
+            test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
+    test_engine->previous_moves = main_engine->previous_moves;
+    */
+    printf("Thinking. \n");
+
+    moves ai;
+
+    float init_time = (float)clock()/CLOCKS_PER_SEC;
+
+    ai = test_engine->GetBestMove();
+    test_engine->PrintInfo();
+    //printf("Total leaves evaluated: %u\n",total_count);
+    printf("Total time %f\n", (float)clock()/CLOCKS_PER_SEC - init_time);
+    init_time = (float)clock()/CLOCKS_PER_SEC;
+
+
+    main_engine->prev_ai_move = moves(ai.x0, ai.y0, ai.x1, ai.y1);
+    main_engine->ProcessInput(ai.x0, ai.y0, ai.x1, ai.y1);
+
+    return 0;
+}
+
+void Engine::MakeAIMove()
+{
+    //AIThread(this);
+
+    CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+}
