@@ -39,6 +39,12 @@ private:
 
     int total_moves;
     int quies_extra_max;
+
+    int max_d;
+    moves best_move;
+    bool modified = false;
+
+    static long unsigned int __stdcall AIThread(void *input);
 public:
     EngineAI(Board board):Board(board){}
     moves GetBestMove(int level = AI_EASY);

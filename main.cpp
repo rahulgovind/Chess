@@ -2,7 +2,7 @@
 
 int main()
 {
-    Chess2D game(true);
+    Chess2D game(false);
     game.StartGame();
 
     printf("\nPress enter to continue\n");

@@ -7,6 +7,7 @@
 #include <GL/glfw3.h>
 #include <cstdio>
 #include <bits/stdc++.h>
+#include <windows.h>
 
 #include "image_loader.h"
 #include "engine.h"
@@ -75,9 +76,8 @@ private:
     void LoadBoardColor();
     void LoadPieceTextures();
     void DrawBoard();
-    static
-    void ProcessMouseInput(GLFWwindow*,int,int,int);
-
+    static void ProcessMouseInput(GLFWwindow*,int,int,int);
+    static void ProcessKeyInput(GLFWwindow*,int,int,int,int);
     static bool selected;
     static int prev_x;
     static int prev_y;
@@ -89,6 +89,7 @@ private:
 
     static bool single_player_mode;
 
+    int MainLoop(GLFWwindow*);
 public:
     Chess2D(bool single_player=true,int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
 
@@ -226,6 +227,7 @@ int Chess2D::StartGame()
     }
 
     glfwSetMouseButtonCallback(window, ProcessMouseInput);
+    glfwSetKeyCallback(window, ProcessKeyInput);
     glfwMakeContextCurrent(window);
 
     glewExperimental = GL_TRUE;
@@ -346,16 +348,16 @@ int Chess2D::StartGame()
     prev_game_state = engine->GetGameStatus();
     current_player = engine->GetCurrentPlayer();
 
+    return MainLoop(window);
+}
+
+int Chess2D::MainLoop(GLFWwindow *window)
+{
+    bool stop_game = false;
     double prev_event_time = glfwGetTime();
 
     while(!glfwWindowShouldClose(window))
     {
-        if(glfwGetKey(window, GLFW_KEY_ESCAPE)==GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
-        //Asks the engine if there is any change in the game.
-        //And if a change in the vertice information is required
-        //if(selected_x || prev_game_state != engine->GetGameStatus() || current_player != engine->GetCurrentPlayer())
 
         glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), vertices);
         LoadPieceTextures();
@@ -369,10 +371,10 @@ int Chess2D::StartGame()
 
         glClear(GL_COLOR_BUFFER_BIT);
         DrawBoard();
+        glfwSwapBuffers(window);
 
         int game_status = engine->GetGameStatus();
 
-        bool stop_game = false;
         //Get status of the game
         //Game is stopped if there's either a checkmate or stalemate
         switch(game_status)
@@ -380,30 +382,42 @@ int Chess2D::StartGame()
         case GAME_CHECKMATE:
             stop_game = true;
             if(engine->GetCurrentPlayer()==1)
+            {
                 printf("Checkmate. Player 2 wins. \n");
+                MessageBox(NULL,"Checkmate. Player 2 wins", "Chess 2D", MB_OK);
+            }
             else
+            {
                 printf("Checkmate. Player 1 wins. \n");
+                MessageBox(NULL, "Checkmate. Player 1 wins", "Chess 2D",MB_OK);
+            }
             break;
         case GAME_STALEMATE:
+
             stop_game = true;
             printf("Stalemate. Draw.\n");
+            MessageBox(NULL, "Draw. Stalemate.", "Chess 2D",MB_OK);
             break;
         }
         if(stop_game)
+        {
+            glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), vertices);
+            LoadPieceTextures();
+            LoadBoardColor();
+            glClear(GL_COLOR_BUFFER_BIT);
+            DrawBoard();
+            glfwSwapBuffers(window);
             glfwSetWindowShouldClose(window, GL_TRUE);
+        }
 
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
-        glfwSwapBuffers(window);
         while(glfwGetTime()-prev_event_time<EVENT_PROCESS_WAIT_TIME)
             Sleep(1);
         prev_event_time = glfwGetTime();
         glfwPollEvents();
     }
 
-    glfwDestroyWindow(window);
-    return 1;
+    return 0;
 }
-
 void Chess2D::DrawBoard()
 {
     glDrawElements(GL_TRIANGLES, 8*8*6, GL_UNSIGNED_INT, 0);
@@ -556,4 +570,13 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
     }
 }
 
+void Chess2D::ProcessKeyInput(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if(key==GLFW_KEY_Z && mods==GLFW_MOD_CONTROL && action==GLFW_PRESS)
+    {
+        bool modified = engine->UndoGame();
+        if(modified)
+            selected=false;
+    }
+}
 #endif // _CHESS2D_H

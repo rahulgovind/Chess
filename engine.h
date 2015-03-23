@@ -12,9 +12,6 @@
 #define GAME_THINKING 13
 #define ENGINE_DEBUG true
 
-
-
-
 class Engine: public Board
 {
 private:
@@ -26,12 +23,14 @@ private:
     static long unsigned int __stdcall AIThread(void*);
 public:
     Engine(bool);
+    Engine(bool, string);
     int GetGameStatus();
     int GetCurrentPlayer();
     int GetPiece(int x, int y);
     void ProcessInput(int x0, int y0, int x1, int y1);
     moves GetAIMove();
     void MakeAIMove();
+    bool UndoGame();
 };
 
 

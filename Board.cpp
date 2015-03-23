@@ -58,11 +58,11 @@ bool Board::IsValidMove(int x0, int y0, int x1, int y1)
             return true;
         break;
     case 1:
-        if(IsValidEnPassant1(x0, y0, x1, y1))
+        if(IsValidEnPassant1(x0, y0, x1, y1) && IsIllegal1(x0, y0, x1, y1)==false)
             return true;
         break;
     case -1:
-        if(IsValidEnPassant2(x0, y0, x1, y1))
+        if(IsValidEnPassant2(x0, y0, x1, y1) && IsIllegal2(x0, y0, x1, y1)==false)
             return true;
         break;
     }

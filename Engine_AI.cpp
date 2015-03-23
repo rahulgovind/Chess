@@ -1,14 +1,16 @@
 #include "engine_ai.h"
+#include <windows.h>
+#include <ctime>
 
 const int values[] = { 0, 100, 300, 300, 500, 900, 100000};
 
-const int mobility_value = 5;
-const int castle_value = 40;
-const int early_queen = 60;
+const int mobility_value = 3;
+const int castle_value = 60;
+const int early_queen = 20;
 const int bishop_long_diagonal = 30;
-const int developed_knight = 20;
-const int double_bishop = 80;
-const int doubled_pawn = 30;
+const int developed_knight = 35;
+const int double_bishop = 45;
+const int doubled_pawn = 10;
 const int pawn_forward_bonus = 5;
 
 moves EngineAI::GetBestMove(int level)
@@ -17,41 +19,74 @@ moves EngineAI::GetBestMove(int level)
     quies_extra_max = 0;
     moves result;
     this->level = level;
-    int max_d;
+    int max_time;
+    bool first_modified = false;
     //Game difficulty
     switch(level)
     {
     case AI_EASY:
-        max_d = 2;
+        max_time = 1;
         break;
     case AI_MEDIUM:
-        max_d = 3;
+        max_time = 4;
         break;
     case AI_HARD:
-        max_d = 4;
+        max_time = 10;
         break;
     }
+
+
     //Decide game stage
     if(previous_moves.size()<20)
     {
         quies_factor = 0.5;
         stage = AI_OPENING;
     }
-    else if(previous_moves.size()>35)
+    else if(previous_moves.size()>50)
     {
         quies_factor = 0.25;
-        max_d+=3;
         stage = AI_END_GAME;
     }
     else
     {
-        quies_factor = 0.4;
-        max_d++;
+        quies_factor = 0.25;
         stage = AI_MIDDLE_GAME;
     }
-    //Game difficulty
 
-    return minimax_base(max_d);
+    HANDLE hThread = CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+
+    modified = false;
+    max_d = 1;
+
+
+    int init_time = time(NULL);
+    while(true)
+    {
+        Sleep(5);
+
+        if(modified)
+        {
+            first_modified=true;
+            modified = false;
+            max_d++;
+            hThread = CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+        }
+        if(first_modified && (time(NULL)-init_time>max_time))
+        {
+            TerminateThread(hThread, 0);
+            break;
+        }
+    }
+
+    return best_move;
+}
+
+long unsigned int __stdcall EngineAI::AIThread(void *input)
+{
+    EngineAI *engine_ai = (EngineAI*)input;
+    engine_ai->best_move = engine_ai->minimax_base(engine_ai->max_d);
+    engine_ai->modified = true;
+    return 0;
 }
 
 void EngineAI::PrintInfo()
@@ -82,6 +117,8 @@ void EngineAI::PrintInfo()
         printf("End game\n");
         break;
     }
+
+    printf("Base max depth: %u\n", (modified)? max_d-1 : max_d);
     printf("Total leaves evaluated: %u\n", total_moves);
     printf("Maximum extra moves for quiescence: %u\n", quies_extra_max);
 
@@ -298,11 +335,14 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                    if(prev_1 == -7)
+                                    if(prev_1 >= 9)
+                                    {
                                         pieces_lost1[5]++;
-                                    else if(prev_1 == -8)
+                                        pieces_lost1[prev_1 - 9]++;
+                                    }
+                                    else if(prev_1 == -7)
                                         castled2 = true;
-                                    else if(prev_1 == -9)
+                                    else if(prev_1 == -8)
                                         pieces_lost1[1]++;
                                     else
                                         pieces_lost1[prev_1]++;
@@ -313,11 +353,14 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
                                     alpha = max(max_here, alpha);
 
                                     //Undo move
-                                    if(prev_1 == -7)
+                                    if(prev_1 >= 9)
+                                    {
                                         pieces_lost1[5]--;
-                                    else if(prev_1 == -8)
+                                        pieces_lost1[prev_1-9]--;
+                                    }
+                                    else if(prev_1 == -7)
                                         castled2 = false;
-                                    else if(prev_1 == -9)
+                                    else if(prev_1 == -8)
                                         pieces_lost1[1]--;
                                     else
                                         pieces_lost1[prev_1]--;
@@ -373,11 +416,14 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                    if(prev_1 == 7)
+                                    if(prev_1 <= -9)
+                                    {
                                         pieces_lost2[5]++;
-                                    else if(prev_1 == 8)
+                                        pieces_lost2[-prev_1-9]++;
+                                    }
+                                    else if(prev_1 == 7)
                                         castled1 = true;
-                                    else if(prev_1 == 9)
+                                    else if(prev_1 == 8)
                                         pieces_lost2[1]++;
                                     else
                                         pieces_lost2[-prev_1]++;
@@ -389,11 +435,14 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
                                     beta = min(min_here, beta);
 
                                     //Undo move
-                                    if(prev_1 == 7)
+                                    if(prev_1 <= -9)
+                                    {
                                         pieces_lost2[5]--;
-                                    else if(prev_1 == 8)
+                                        pieces_lost2[-prev_1 - 9]--;
+                                    }
+                                    else if(prev_1 == 7)
                                         castled1 = false;
-                                    else if(prev_1 == 9)
+                                    else if(prev_1 == 8)
                                         pieces_lost2[1]--;
                                     else
                                         pieces_lost2[-prev_1]--;
@@ -446,11 +495,14 @@ moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
                                 int prev_0 = board_matrix[x0][y0];
                                 int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                if(prev_1 == -7)
+                                if(prev_1 >= 9)
+                                {
                                     pieces_lost1[5]++;
-                                else if(prev_1 == -8)
+                                    pieces_lost1[prev_1-9]++;
+                                }
+                                else if(prev_1 == -7)
                                     castled2 = true;
-                                else if(prev_1 == -9)
+                                else if(prev_1 == -8)
                                     pieces_lost1[1]++;
                                 else
                                     pieces_lost1[prev_1]++;
@@ -468,16 +520,20 @@ moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
                                 alpha = max(max_here, alpha);
 
                                 //Undo move
-                                if(prev_1 == -7)
+                                if(prev_1 >= 9)
+                                {
                                     pieces_lost1[5]--;
-                                else if(prev_1 == -8)
+                                    pieces_lost1[prev_1 - 9]--;
+                                }
+                                else if(prev_1 == -7)
                                     castled2 = false;
-                                else if(prev_1 == -9)
+                                else if(prev_1 == -8)
                                     pieces_lost1[1]--;
                                 else
                                     pieces_lost1[prev_1]--;
 
                                 UndoMove(prev_0, prev_1, x0, y0, x1, y1);
+
                             }
             }
     }

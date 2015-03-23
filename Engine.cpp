@@ -18,6 +18,47 @@ Engine::Engine(bool AI_mode):Board()
     ai_mode = AI_mode;
 }
 
+Engine::Engine(bool AI_mode, string fname)
+{
+    try
+    {
+        int x0, y0, x1, y1;
+        Engine temp(false);
+        vector<moves> redo_moves;
+        redo_moves.clear();
+        ifstream dbg(fname);
+        while(true)
+        {
+            dbg>>x0>>y0>>x1>>y1;
+            if(dbg.eof())
+                break;
+            if(x0>=0 && x0<8 && y0>=0 && y0<8 && x1>=0 && x1<8 && y1>=0 && y1<8)
+                redo_moves.push_back(moves(x0, y0,x1, y1));
+        }
+
+        int length = redo_moves.size();
+        int i=0;
+        for(vector<moves>::iterator it = redo_moves.begin();i<length-length%2;++it, ++i)
+        {
+            temp.ProcessInput(it->x0, it->y0, it->x1, it->y1);
+        }
+        *this = temp;
+        this->ai_mode = AI_mode;
+
+        printf("%u\n", length);
+        if(length%2==1)
+        {
+            moves last_move = redo_moves.back();
+            this->ProcessInput(last_move.x0, last_move.y0, last_move.x1, last_move.y1);
+        }
+
+        dbg.close();
+    }
+    catch(...)
+    {
+        cout<<"Error reading from "<<fname<<endl;
+    }
+}
 int Engine::GetGameStatus()
 {
     return game_status;
@@ -81,7 +122,7 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
 
 int Board::MakeMove(int x0, int y0, int x1, int y1)
 {
-    previous_moves.push_back(moves(x0,y0,x1,y1)); //Temporary
+    previous_moves.push_back(moves(x0,y0,x1,y1));
     int temp = board_matrix[x1][y1];
     board_matrix[x1][y1] = board_matrix[x0][y0];
     board_matrix[x0][y0] = 0;
@@ -90,13 +131,13 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
     {
         //Handle pawn promotion
         board_matrix[x1][y1] = 5;
-        temp = 7;
+        temp -= 9;
     }
     else if(y1 == 0 && board_matrix[x1][y1] == -1)
     {
         //Handle pawn promotion
         board_matrix[x1][y1] = -5;
-        temp = -7;
+        temp += 9;
     }
     else if(board_matrix[x1][y1]==6 && y1==0 && y0==0 && abs(x1-x0)==2)
     {
@@ -106,14 +147,14 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
             //Far castle
             board_matrix[0][0] = 0;
             board_matrix[3][0] = 4;
-            temp = 8;
+            temp = 7;
         }
         else if(x1==6)
         {
             //Near castle
             board_matrix[7][0] = 0;
             board_matrix[5][0] = 4;
-            temp = 8;
+            temp = 7;
         }
     }
     else if(board_matrix[x1][y1]==-6 && y1==7 && y0==7 && abs(x1-x0)==2)
@@ -124,25 +165,27 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
             //Far castle
             board_matrix[0][7] = 0;
             board_matrix[3][7] = -4;
-            temp = -8;
+            temp = -7;
         }
         else if(x1==6)
         {
             //Near castle
             board_matrix[7][7] = 0;
             board_matrix[5][7] = -4;
-            temp = -8;
+            temp = -7;
         }
     }
     else if(board_matrix[x1][y1]==1 && temp == 0 && abs(x1 - x0) == 1)
     {
+        //En passant
         board_matrix[x1][4] = 0;
-        temp = 9;
+        temp = 8;
     }
     else if(board_matrix[x1][y1]==-1 && temp == 0 && abs(x1 - x0) == 1)
     {
+        //En passant
         board_matrix[x1][3] = 0;
-        temp = -9;
+        temp = -8;
     }
 
     return temp;
@@ -151,12 +194,15 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
 void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
 {
     previous_moves.pop_back(); //temporary
-    if(piece1 == 7 || piece1 == -7)
+    if(piece1 >=9 || piece1 <= -9)
     {
         //Pawn promotion undo
-        piece1 = 0;
+        if(piece1>0)
+            piece1-=9;
+        else
+            piece1+=9;
     }
-    else if(piece1 == 8)
+    else if(piece1 == 7)
     {
         piece1 = 0;
         if(x1 == 2)
@@ -172,7 +218,7 @@ void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
             board_matrix[5][0] = 0;
         }
     }
-    else if(piece1 == -8)
+    else if(piece1 == -7)
     {
         piece1 = 0;
         if(x1 == 2)
@@ -188,12 +234,12 @@ void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
             board_matrix[5][7] = 0;
         }
     }
-    else if(piece1 == 9)
+    else if(piece1 == 8)
     {
         piece1 = 0;
         board_matrix[x1][4] = -1;
     }
-    else if(piece1 == -9)
+    else if(piece1 == -8)
     {
         piece1 = 0;
         board_matrix[x1][3] = 1;
@@ -208,19 +254,12 @@ moves Engine::GetAIMove()
     return prev_ai_move;
 }
 
-
 long unsigned int __stdcall Engine::AIThread(void *input)
 {
     Engine *main_engine = (Engine*)input;
 
     EngineAI *test_engine = new EngineAI((*(Board*)main_engine));
 
-    /*
-    for(int i=0;i<8;i++)
-        for(int j=0;j<8;j++)
-            test_engine->board_matrix[i][j] = main_engine->board_matrix[i][j];
-    test_engine->previous_moves = main_engine->previous_moves;
-    */
     printf("Thinking. \n");
 
     moves ai;
@@ -229,7 +268,6 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
     ai = test_engine->GetBestMove(AI_MEDIUM);
     test_engine->PrintInfo();
-
 
 
 
@@ -244,4 +282,46 @@ void Engine::MakeAIMove()
     //AIThread(this);
 
     CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
+}
+
+bool Engine::UndoGame()
+{
+    bool modified = false;
+    int prev_length = previous_moves.size();
+    if(prev_length>=1 && game_status!=GAME_CHECKMATE && game_status!=GAME_STALEMATE)
+    {
+        Engine temp(false);
+        if(ai_mode==false)
+        {
+            previous_moves.pop_back();
+            for(vector<moves>::iterator it = previous_moves.begin();it!=previous_moves.end();++it)
+            {
+                temp.MakeMove(it->x0, it->y0, it->x1, it->y1);
+            }
+
+            for(int i=0;i<8;i++)
+                for(int j=0;j<8;j++)
+                    board_matrix[i][j] = temp.board_matrix[i][j];
+            modified = true;
+        }
+        else if(ai_mode==true && game_status!=GAME_THINKING)
+        {
+            previous_moves.pop_back();
+            previous_moves.pop_back();
+            for(vector<moves>::iterator it = previous_moves.begin();it!=previous_moves.end();++it)
+            {
+                temp.MakeMove(it->x0, it->y0, it->x1, it->y1);
+            }
+
+            for(int i=0;i<8;i++)
+                for(int j=0;j<8;j++)
+                    board_matrix[i][j] = temp.board_matrix[i][j];
+
+            prev_ai_move = moves(-1,-1,-1,-1);
+            modified = true;
+        }
+
+    }
+
+    return modified;
 }

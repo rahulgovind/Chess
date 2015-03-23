@@ -35,7 +35,6 @@
 		<Unit filename="Chess2D.h" />
 		<Unit filename="Engine.cpp" />
 		<Unit filename="Engine_AI.cpp" />
-		<Unit filename="Zobrist.h" />
 		<Unit filename="board.h" />
 		<Unit filename="engine.h" />
 		<Unit filename="engine_ai.h" />
