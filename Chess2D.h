@@ -12,6 +12,7 @@
 #include "image_loader.h"
 #include "engine.h"
 #include "shader_source.h"
+#include "gl.h"
 
 using namespace std;
 
@@ -43,6 +44,11 @@ float textures[][8] = {  {0, 0,          0, 0,           0, 0,       0,0        
                         {1.0/6.0,1.0,   2.0/6.0,1.0,    2.0/6.0,0.5,1.0/6.0,0.5 },
                         {0.0/6.0,1.0,   1.0/6.0,1.0,    1.0/6.0,0.5,0,0.5       } };
 
+RGBA white(0.8,0.8,0.8);
+RGBA black(0.4, 0.4, 0.4);
+RGBA selected_color(0.1, 0.8, 0.1);
+RGBA highlighted_color(0.3, 1.0, 0.3);
+
 class Chess2D
 {
 private:
@@ -61,16 +67,12 @@ private:
     char* vertex_source;
     char* fragment_source;
 
-    static GLfloat *vertices;
-    static GLuint num_vertices;
+    //static GLfloat *vertices;
+    vector<float> vertices;
+    unsigned int num_vertices;
 
-    GLuint *elements;
-    GLuint num_elements;
-
-    static RGBA white;
-    static RGBA black;
-    static RGBA selected_color;
-    static RGBA highlighted_color;
+    vector<int> elements;
+    unsigned int num_elements;
 
     static Engine *engine;
     void LoadBoardColor();
@@ -104,15 +106,8 @@ float Chess2D::board_width = 0;
 float Chess2D::board_height = 0;
 float Chess2D::board_left = 0;
 float Chess2D::board_top = 0;
-GLfloat* Chess2D::vertices = NULL;
-GLuint Chess2D::num_vertices = 0;
 
 Engine* Chess2D::engine = NULL;
-
-RGBA Chess2D::white(0.8,0.8,0.8);
-RGBA Chess2D::black(0.4, 0.4, 0.4);
-RGBA Chess2D::selected_color(0.1, 0.8, 0.1);
-RGBA Chess2D::highlighted_color(0.3, 1.0, 0.3);
 
 bool Chess2D::selected = false;
 int Chess2D::prev_x = 0;
@@ -138,7 +133,7 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
     //Colour: 3 floats
     //Texture: 2 floats
 
-    vertices = new GLfloat[4*64*7];
+    vertices.resize(4*64*7);
     for(int i=0;i<4*64*7;i++)
         vertices[i] = 0.0f;
 
@@ -166,7 +161,7 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
             index+=7;
         }
     num_vertices = 4*8*8*7;
-    elements = new GLuint[6*64];
+    elements.resize(6*64);
 
 
     index = 0;
@@ -189,16 +184,11 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
     LoadBoardColor();
     LoadPieceTextures();
 
-}
 
-int Chess2D::StartGame()
-{
-
-
-    if(!glfwInit())
+     if(!glfwInit())
     {
         fputs("Unable to load GLFW\n", stderr);
-        return -1;
+        return;
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -216,13 +206,14 @@ int Chess2D::StartGame()
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
+        glfwWindowHint(GLFW_VISIBLE, false);
 
         window = glfwCreateWindow(window_width, window_height, "Chess 2D", NULL, NULL);
 
         if(!window)
         {
             fputs("Unable to create window\n", stderr);
-            return -1;
+            return;
         }
     }
 
@@ -234,10 +225,14 @@ int Chess2D::StartGame()
     if(glewInit()!=GLEW_OK)
     {
         fputs("Unable to load GLEW\n", stderr);
-        return -1;
+        return;
     }
 
+}
 
+int Chess2D::StartGame()
+{
+    glfwShowWindow(window);
 
     //Load Vertex Array Object
     glGenVertexArrays(1, &vao);
@@ -246,15 +241,17 @@ int Chess2D::StartGame()
     //Load Vertex Buffer Objects
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    printf("No. of vertices: %d\n", num_vertices/7);
-    glBufferData(GL_ARRAY_BUFFER, num_vertices*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, num_vertices*sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW);
 
     //Load Vertex Element Objects
     glGenBuffers(1, &eao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eao);
-    printf("No. of elements: %d\n", num_elements);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, num_elements*sizeof(GLuint), elements, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, num_elements*sizeof(GLuint), &elements[0], GL_STATIC_DRAW);
 
+    Shader shader1(vertex_shader_source, fragment_shader_source);
+    shader1.Load();
+    GLuint shader_program = shader1.id;
+    /*
     GLint status;
     //Loading vertex shader
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -301,7 +298,7 @@ int Chess2D::StartGame()
     //Link and use the shader program
     glLinkProgram(shader_program);
     glUseProgram(shader_program);
-
+    */
     //Load Textures
     GLuint tex;
     glGenTextures(1, &tex);
@@ -359,7 +356,7 @@ int Chess2D::MainLoop(GLFWwindow *window)
     while(!glfwWindowShouldClose(window))
     {
 
-        glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
         LoadPieceTextures();
         LoadBoardColor();
 
@@ -401,7 +398,7 @@ int Chess2D::MainLoop(GLFWwindow *window)
         }
         if(stop_game)
         {
-            glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), vertices);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
             LoadPieceTextures();
             LoadBoardColor();
             glClear(GL_COLOR_BUFFER_BIT);
@@ -424,8 +421,6 @@ void Chess2D::DrawBoard()
 }
 Chess2D::~Chess2D()
 {
-    delete[] vertices;
-    delete[] elements;
     delete[] vertex_source;
     delete[] fragment_source;
 }

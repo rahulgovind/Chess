@@ -1,5 +1,5 @@
 #ifndef _IMAGE_LOADER_H
-#define _IMAGEE_LOADER_H
+#define _IMAGE_LOADER_H
 
 #include <fstream>
 

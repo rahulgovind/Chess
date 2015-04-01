@@ -1,8 +1,7 @@
 #include "engine.h"
 #include "engine_ai.h"
 
-#include <fstream>
-
+using namespace std;
 
 Engine::Engine(bool AI_mode):Board()
 {
@@ -26,7 +25,7 @@ Engine::Engine(bool AI_mode, string fname)
         Engine temp(false);
         vector<moves> redo_moves;
         redo_moves.clear();
-        ifstream dbg(fname);
+        ifstream dbg(fname.c_str());
         while(true)
         {
             dbg>>x0>>y0>>x1>>y1;
@@ -303,6 +302,7 @@ bool Engine::UndoGame()
                 for(int j=0;j<8;j++)
                     board_matrix[i][j] = temp.board_matrix[i][j];
             modified = true;
+            player1 = !player1;
         }
         else if(ai_mode==true && game_status!=GAME_THINKING)
         {
