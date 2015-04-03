@@ -1,0 +1,22 @@
+const char *text_vertex_shader =  "#version 150\n"
+                        "in vec2 pos;\n"
+                        "in vec2 texcoord;\n"
+                        "out vec2 Texcoord;\n"
+                        "void main()\n"
+                        "{\n"
+                        "Texcoord = texcoord;\n"
+                        "gl_Position = vec4(pos, 0, 1);\n"
+                        "}\n";
+
+const char *text_fragment_shader =    "#version 150\n"
+                            "in vec2 Texcoord;\n"
+                            "uniform sampler2D tex;\n"
+                            "out vec4 outColor;\n"
+                            "void main()\n"
+                            "{\n"
+                            "vec4 temp = texture(tex, Texcoord);\n"
+                            "if(temp.r == 0 && temp.g == 0 && temp.b == 0)"
+                            "outColor = vec4(0,0,0,0);\n"
+                            "else\n"
+                            "outColor = temp;\n"
+                            "}\n";

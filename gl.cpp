@@ -1,6 +1,36 @@
 #include "gl.h"
 #define GLEW_STATIC
 #include <GL/glew.h>
+#include <GL/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <vector>
+#include <cstring>
+#include "image_loader.h"
+
+
+const char *text_vertex_shader =  "#version 150\n"
+                        "in vec2 pos;\n"
+                        "in vec2 texcoord;\n"
+                        "out vec2 Texcoord;\n"
+                        "void main()\n"
+                        "{\n"
+                        "Texcoord = texcoord;\n"
+                        "gl_Position = vec4(pos, 0, 1);\n"
+                        "}\n";
+
+const char *text_fragment_shader =    "#version 150\n"
+                            "in vec2 Texcoord;\n"
+                            "uniform sampler2D tex;\n"
+                            "out vec4 outColor;\n"
+                            "void main()\n"
+                            "{\n"
+                            "vec4 temp = texture(tex, Texcoord);\n"
+                            "if(temp.r == 0 && temp.g == 0 && temp.b == 0)"
+                            "outColor = vec4(1,1,1,0.1);\n"
+                            "else\n"
+                            "outColor = temp;\n"
+                            "}\n";
 
 Shader::Shader(string vertex_source, string fragment_source)
 {
@@ -51,4 +81,152 @@ Shader::~Shader()
     glDeleteProgram(id);
     glDeleteShader(frag_shader);
     glDeleteShader(vert_shader);
+}
+
+
+GLSave::GLSave()
+{
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, (GLint*)&vao);
+    glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&program);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&active_texture);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&vbo);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&eao);
+
+    glGetBooleanv(GL_BLEND, (GLboolean*)&blend);
+    glGetBooleanv(GL_DEPTH_TEST, (GLboolean*)&depth);
+    glGetBooleanv(GL_STENCIL_TEST, (GLboolean*)&stencil);
+}
+
+GLSave::~GLSave()
+{
+    if(vao!=0) glBindVertexArray(vao);
+    if(vbo!=0) glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    if(eao!=0) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_BINDING, eao);
+
+    if(program!=0) glUseProgram(program);
+    if(active_texture!=0) glActiveTexture(active_texture);
+    (blend == true)? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+    (depth == true)? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+    (stencil==true)? glEnable(GL_STENCIL_TEST) : glDisable(GL_STENCIL_TEST);
+}
+
+Text::Text()
+{
+    GLSave save;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+
+    glGenVertexArrays(1, &text_vao);
+    glGenBuffers(1, &vertex_buffer);
+    glGenBuffers(1, &tex_buffer);
+
+    glBindVertexArray(text_vao);
+    vert = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vert, 1, &text_vertex_shader, NULL);
+    glCompileShader(vert);
+
+    frag = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(frag, 1, &text_fragment_shader, NULL);
+    glCompileShader(frag);
+
+    shader_program = glCreateProgram();
+    glAttachShader(shader_program, vert);
+    glAttachShader(shader_program, frag);
+
+    glBindFragDataLocation(shader_program, 0, "outColor");
+
+    tex_pixels = loadBMP("ExportedFont.bmp", &tex_width, &tex_height);
+    glGenTextures(1, &texture);
+}
+
+void Text::Draw(float x, float y, float size, string s)
+{
+    GLSave save;
+
+
+    glBindVertexArray(text_vao);
+    vector<glm::vec2> vertices;
+    vector<glm::vec2> texcoord;
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    for(unsigned int i=0;i<s.length();i++)
+    {
+        float r = 1.0f;
+
+        float tex_x = (s[i]%16)/16.0f;
+        float tex_y = (s[i]/16)/16.0f;
+
+
+
+        vertices.push_back(glm::vec2(x, y));
+        vertices.push_back(glm::vec2(x+size*r,y));
+        vertices.push_back(glm::vec2(x+size*r,y-size));
+
+        vertices.push_back(glm::vec2(x, y));
+        vertices.push_back(glm::vec2(x+size*r, y-size));
+        vertices.push_back(glm::vec2(x, y-size));
+
+
+
+        texcoord.push_back(glm::vec2(tex_x,             1.0f - tex_y));
+        texcoord.push_back(glm::vec2(tex_x+1.0f/16.0f*r,  1.0f - tex_y));
+        texcoord.push_back(glm::vec2(tex_x+1.0f/16.0f*r,  1.0f - (tex_y + 1.0f/16.0f)));
+
+        texcoord.push_back(glm::vec2(tex_x,             1.0f - tex_y));
+        texcoord.push_back(glm::vec2(tex_x+1.0f/16.0f*r,  1.0f - (tex_y + 1.0f/16.0f)));
+        texcoord.push_back(glm::vec2(tex_x           ,  1.0f - (tex_y + 1.0f/16.0f)));
+
+        x+=(size*r);
+
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(glm::vec2), &vertices[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, tex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, texcoord.size()*sizeof(glm::vec2), &texcoord[0], GL_STATIC_DRAW);
+
+    glLinkProgram(shader_program);
+    glUseProgram(shader_program);
+
+    glActiveTexture(GL_TEXTURE0+texture-1);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_pixels);
+
+
+
+    int texAttrib = glGetAttribLocation(shader_program, "texcoord");
+    glEnableVertexAttribArray(texAttrib);
+    glBindBuffer(GL_ARRAY_BUFFER, tex_buffer);
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+
+    unsigned int posAttrib = glGetAttribLocation(shader_program, "pos");
+    glEnableVertexAttribArray(posAttrib);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    unsigned int texSampler = glGetUniformLocation(shader_program, "tex");
+    glUniform1i(texSampler, texture-1);
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+    glDisableVertexAttribArray(posAttrib);
+    glDisableVertexAttribArray(texAttrib);
+
+}
+
+Text::~Text()
+{
+    glDeleteBuffers(1, &vertex_buffer);
+    glDeleteBuffers(1, &tex_buffer);
+    glDeleteTextures(1, &texture);
+    glDeleteVertexArrays(1, &text_vao);
+    glDeleteProgram(shader_program);
+    glDeleteShader(vert);
+    glDeleteShader(frag);
 }

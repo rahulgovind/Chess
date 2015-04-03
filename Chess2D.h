@@ -62,10 +62,9 @@ private:
     GLuint vao;
     GLuint vbo;
     GLuint eao;
-
+    Shader *board_shader;
     GLFWwindow *window;
-    char* vertex_source;
-    char* fragment_source;
+
 
     //static GLfloat *vertices;
     vector<float> vertices;
@@ -84,9 +83,6 @@ private:
     static int prev_x;
     static int prev_y;
 
-
-    static bool prev_selected;
-    static int prev_game_state;
     static int current_player;
 
     static bool single_player_mode;
@@ -112,9 +108,7 @@ Engine* Chess2D::engine = NULL;
 bool Chess2D::selected = false;
 int Chess2D::prev_x = 0;
 int Chess2D::prev_y = 0;
-bool Chess2D::prev_selected = false;
 int Chess2D::current_player = 1;
-int Chess2D::prev_game_state = 0;
 
 bool Chess2D::single_player_mode = false;
 //Load vertex shader, Fragment shader, set glfw window hints, initialize data
@@ -228,13 +222,7 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
         return;
     }
 
-}
-
-int Chess2D::StartGame()
-{
-    glfwShowWindow(window);
-
-    //Load Vertex Array Object
+     //Load Vertex Array Object
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
@@ -248,57 +236,9 @@ int Chess2D::StartGame()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eao);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, num_elements*sizeof(GLuint), &elements[0], GL_STATIC_DRAW);
 
-    Shader shader1(vertex_shader_source, fragment_shader_source);
-    shader1.Load();
-    GLuint shader_program = shader1.id;
-    /*
-    GLint status;
-    //Loading vertex shader
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, (const GLchar**)&vertex_shader_source, NULL);
-    glCompileShader(vertex_shader);
+    board_shader = new Shader(vertex_shader_source, fragment_shader_source);
+    board_shader->Load();
 
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
-    if(status!=GL_TRUE)
-    {
-        fputs("Unable to compile vertex shader\n", stderr);
-
-        printf("Your GLSL version is %s\n", (char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
-        char buffer[512];
-        glGetShaderInfoLog(vertex_shader, 512, NULL, buffer);
-        printf("%s\n", buffer);
-        return -1;
-    }
-
-    //Load fragment shader
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, (const GLchar**)&fragment_shader_source, NULL);
-    glCompileShader(fragment_shader);
-
-
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &status);
-    if(status!=GL_TRUE)
-    {
-        fputs("Unable to compile fragment shader\n", stderr);
-        char buffer[512];
-        printf("Your GLSL version is %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-        glGetShaderInfoLog(fragment_shader, 512, NULL, buffer);
-        printf("%s\n", buffer);
-        return -1;
-    }
-    //Link and compile shader program
-    GLuint shader_program;
-    shader_program = glCreateProgram();
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-
-    //Bind fragment output to output 0
-    glBindFragDataLocation(shader_program, 0, "outColor");
-
-    //Link and use the shader program
-    glLinkProgram(shader_program);
-    glUseProgram(shader_program);
-    */
     //Load Textures
     GLuint tex;
     glGenTextures(1, &tex);
@@ -313,27 +253,23 @@ int Chess2D::StartGame()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     //Load the texture file
-    int width, height;
-    unsigned char* pixels = loadBMP("chess.bmp", &width, &height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-
-    //Deallocate memory used up by the image file
+    int tex_width, tex_height;
+    unsigned char* pixels = loadBMP("chess.bmp", &tex_width, &tex_height);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     unload_BMP(pixels);
-
-
     //Set position attribute
-    GLint posAttrib = glGetAttribLocation(shader_program, "position");
+    GLint posAttrib = glGetAttribLocation(board_shader->id, "position");
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, (7*sizeof(GLfloat)), 0); //Now stores in the VAO vao
     glEnableVertexAttribArray(posAttrib);
 
     //Set color attributes for the board
-    GLint colAttrib = glGetAttribLocation(shader_program, "color");
+    GLint colAttrib = glGetAttribLocation(board_shader->id, "color");
     glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
     glEnableVertexAttribArray(colAttrib);
     glfwSwapInterval(1);
 
     //Set texture attributes for the board
-    GLuint texAttrib = glGetAttribLocation(shader_program, "texcoord");
+    GLuint texAttrib = glGetAttribLocation(board_shader->id, "texcoord");
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(5*sizeof(GLfloat)));
     glEnableVertexAttribArray(texAttrib);
 
@@ -341,8 +277,14 @@ int Chess2D::StartGame()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    prev_selected = selected;
-    prev_game_state = engine->GetGameStatus();
+    //Deallocate memory used up by the image file
+    unload_BMP(pixels);
+}
+
+int Chess2D::StartGame()
+{
+    glfwShowWindow(window);
+
     current_player = engine->GetCurrentPlayer();
 
     return MainLoop(window);
@@ -350,43 +292,41 @@ int Chess2D::StartGame()
 
 int Chess2D::MainLoop(GLFWwindow *window)
 {
+
     bool stop_game = false;
     double prev_event_time = glfwGetTime();
 
+    Text text;
     while(!glfwWindowShouldClose(window))
     {
-
-        glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
-        LoadPieceTextures();
-        LoadBoardColor();
-
-        prev_selected = selected;
-        prev_game_state = engine->GetGameStatus();
         current_player = engine->GetCurrentPlayer();
-
-
 
         glClear(GL_COLOR_BUFFER_BIT);
         DrawBoard();
-        glfwSwapBuffers(window);
 
         int game_status = engine->GetGameStatus();
+        if(game_status == GAME_CHECK)
+        {
+
+            text.Draw(-0.25,0.5, 0.1, "Check!");
+        }
 
         //Get status of the game
         //Game is stopped if there's either a checkmate or stalemate
         switch(game_status)
         {
+        case GAME_CHECK:
+            text.Draw(-0.25,0.5, 0.1, "Check!");
+            break;
         case GAME_CHECKMATE:
             stop_game = true;
             if(engine->GetCurrentPlayer()==1)
             {
-                printf("Checkmate. Player 2 wins. \n");
-                MessageBox(NULL,"Checkmate. Player 2 wins", "Chess 2D", MB_OK);
+                text.Draw(-0.65, 0.5, 0.05, "Checkmate! Player 2 wins! ");
             }
             else
             {
-                printf("Checkmate. Player 1 wins. \n");
-                MessageBox(NULL, "Checkmate. Player 1 wins", "Chess 2D",MB_OK);
+                text.Draw(-0.65, 0.5, 0.05, "Checkmate! Player 1 wins!");
             }
             break;
         case GAME_STALEMATE:
@@ -396,16 +336,15 @@ int Chess2D::MainLoop(GLFWwindow *window)
             MessageBox(NULL, "Draw. Stalemate.", "Chess 2D",MB_OK);
             break;
         }
+
+        glfwSwapBuffers(window);
         if(stop_game)
         {
-            glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
-            LoadPieceTextures();
-            LoadBoardColor();
-            glClear(GL_COLOR_BUFFER_BIT);
-            DrawBoard();
-            glfwSwapBuffers(window);
+
             glfwSetWindowShouldClose(window, GL_TRUE);
         }
+
+
 
         while(glfwGetTime()-prev_event_time<EVENT_PROCESS_WAIT_TIME)
             Sleep(1);
@@ -417,12 +356,20 @@ int Chess2D::MainLoop(GLFWwindow *window)
 }
 void Chess2D::DrawBoard()
 {
+    LoadPieceTextures();
+    LoadBoardColor();
+    glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
     glDrawElements(GL_TRIANGLES, 8*8*6, GL_UNSIGNED_INT, 0);
 }
+
 Chess2D::~Chess2D()
 {
-    delete[] vertex_source;
-    delete[] fragment_source;
+    delete board_shader;
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &eao);
+    glDeleteVertexArrays(1, &vao);
+
+
 }
 
 void Chess2D::LoadBoardColor()
@@ -492,6 +439,7 @@ void Chess2D::LoadBoardColor()
 
 
 }
+
 
 void Chess2D::LoadPieceTextures()
 {

@@ -38,6 +38,9 @@
 		<Unit filename="board.h" />
 		<Unit filename="engine.h" />
 		<Unit filename="engine_ai.h" />
+		<Unit filename="gl.cpp" />
+		<Unit filename="gl.h" />
+		<Unit filename="image_loader.cpp" />
 		<Unit filename="image_loader.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="shader_source.h" />
