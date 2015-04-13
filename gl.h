@@ -4,9 +4,25 @@
 #include <cstring>
 #include <iostream>
 #include <exception>
-
+#include <vector>
 
 using namespace std;
+
+template<class T>
+struct Point
+{
+    T x;
+    T y;
+};
+
+template<class T>
+struct Rect
+{
+    T left;
+    T top;
+    union{T width; T right; };
+    union{T height; T bottom; };
+};
 
 class Shader
 {
@@ -67,4 +83,24 @@ public:
     ~Text();
 };
 
+class ImageMenu
+{
+private:
+    unsigned int vao;
+    unsigned int vertex_buffer;
+    unsigned int tex_buffer;
+    unsigned char *tex_pixels;
+    int tex_width;
+    int tex_height;
+
+    unsigned int texture;
+    Shader *shader;
+    Rect<float> boundary;
+    vector<Rect<float> > option_coords;
+public:
+    ImageMenu(string, int window_width, int window_height, Rect<int> Boundary, vector<Rect<int> > Option_coords);
+    void DrawMenu();
+    int ProcessInput(float x, float y);
+    ~ImageMenu();
+};
 #endif // _GL_H

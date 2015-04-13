@@ -8,6 +8,9 @@
 #include <cstring>
 #include "image_loader.h"
 
+#include <iostream>
+using namespace std;
+
 
 const char *text_vertex_shader =  "#version 150\n"
                         "in vec2 pos;\n"
@@ -26,9 +29,29 @@ const char *text_fragment_shader =    "#version 150\n"
                             "void main()\n"
                             "{\n"
                             "vec4 temp = texture(tex, Texcoord);\n"
-                            "if(temp.r == 0 && temp.g == 0 && temp.b == 0)"
-                            "outColor = vec4(1,1,1,0.1);\n"
+                            "if(temp[0] == 0 && temp[1] == 0 && temp[2] == 0)\n"
+                            "outColor = vec4(0,0,0,0);\n"
                             "else\n"
+                            "outColor = temp;\n"
+                            "}\n";
+
+const char* imagemenu_vertex_shader =   "#version 150\n"
+                                        "in vec2 pos;\n"
+                                        "in vec2 texcoord;\n"
+                                        "out vec2 Texcoord;\n"
+                                        "void main()\n"
+                                        "{\n"
+                                        "Texcoord = texcoord;\n"
+                                        "gl_Position = vec4(pos, 0, 1);\n"
+                                        "}\n";
+
+const char *imagemenu_fragment_shader =    "#version 150\n"
+                            "in vec2 Texcoord;\n"
+                            "uniform sampler2D tex;\n"
+                            "out vec4 outColor;\n"
+                            "void main()\n"
+                            "{\n"
+                            "vec4 temp = texture(tex, Texcoord);\n"
                             "outColor = temp;\n"
                             "}\n";
 
@@ -155,7 +178,7 @@ void Text::Draw(float x, float y, float size, string s)
     glDisable(GL_STENCIL_TEST);
     for(unsigned int i=0;i<s.length();i++)
     {
-        float r = 1.0f;
+        float r = 0.3f;
 
         float tex_x = (s[i]%16)/16.0f;
         float tex_y = (s[i]/16)/16.0f;
@@ -229,4 +252,136 @@ Text::~Text()
     glDeleteProgram(shader_program);
     glDeleteShader(vert);
     glDeleteShader(frag);
+}
+
+
+ImageMenu::ImageMenu(string filename, int window_width, int window_height, Rect<int> Boundary, vector<Rect<int> > Option_coords)
+{
+
+
+
+    GLSave save;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vertex_buffer);
+    glGenBuffers(1, &tex_buffer);
+    shader = new Shader(imagemenu_vertex_shader, imagemenu_fragment_shader);
+
+    glGenTextures(1, &texture);
+    tex_pixels = loadBMP(filename.c_str(), &tex_width, &tex_height);
+
+    float scale_factor_x = (float)Boundary.width/tex_width;
+    float scale_factor_y = (float)Boundary.height/tex_height;
+
+    //Translate Option_coords relative to Boundary and scale to size of image
+    for(vector<Rect<int> >::iterator it = Option_coords.begin();it!=Option_coords.end();it++)
+    {
+        it->left += Boundary.left;
+        it->top += Boundary.top;
+
+        //Scale to correct size;
+        it->left *= scale_factor_x;
+        it->top *= scale_factor_y;
+        it->width *= scale_factor_x;
+        it->height *= scale_factor_y;
+
+        Rect<float> temp;
+        temp.left = 2*(float)it->left/window_width - 1.0;
+        temp.top = 1.0 - 2*(float)it->top/window_height;
+        temp.width = 2*(float)it->width/window_width;
+        temp.height = 2*(float)it->height/window_height;
+        option_coords.push_back(temp);
+    }
+
+    boundary.left = 2*(float)Boundary.left/window_width - 1.0;
+    boundary.top = 1.0 - (float)Boundary.top/window_height;
+    boundary.width = 2*(float)Boundary.width/window_width;
+    boundary.height = 2*(float)Boundary.height/window_height;
+
+}
+
+void ImageMenu::DrawMenu()
+{
+    GLSave save;
+
+    glDisable(GL_BLEND);
+    glBindVertexArray(vao);
+    vector<glm::vec2> vertices;
+    vector<glm::vec2> texcoords;
+
+    vertices.push_back(glm::vec2(boundary.left, boundary.top));
+    vertices.push_back(glm::vec2(boundary.left + boundary.width, boundary.top));
+    vertices.push_back(glm::vec2(boundary.left + boundary.width, boundary.top - boundary.height));
+
+    vertices.push_back(glm::vec2(boundary.left, boundary.top));
+    vertices.push_back(glm::vec2(boundary.left + boundary.width, boundary.top - boundary.height));
+    vertices.push_back(glm::vec2(boundary.left, boundary.top - boundary.height));
+
+    texcoords.push_back(glm::vec2(0.0f, 1.0f));
+    texcoords.push_back(glm::vec2(1.0f, 1.0f));
+    texcoords.push_back(glm::vec2(1.0f, 0.0f));
+
+    texcoords.push_back(glm::vec2(0.0f, 1.0f));
+    texcoords.push_back(glm::vec2(1.0f, 0.0f));
+    texcoords.push_back(glm::vec2(0.0f, 0.0f));
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(glm::vec2), &vertices[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, tex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size()*sizeof(glm::vec2), &texcoords[0], GL_STATIC_DRAW);
+
+    glActiveTexture(GL_TEXTURE0 + texture - 1);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_pixels);
+
+    shader->Load();
+
+    int texAttrib = glGetAttribLocation(shader->id, "texcoord");
+    glEnableVertexAttribArray(texAttrib);
+    glBindBuffer(GL_ARRAY_BUFFER, tex_buffer);
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+
+    unsigned int posAttrib = glGetAttribLocation(shader->id, "pos");
+    glEnableVertexAttribArray(posAttrib);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    unsigned int texSampler = glGetUniformLocation(shader->id, "tex");
+    glUniform1i(texSampler, texture-1);
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+    glDisableVertexAttribArray(posAttrib);
+    glDisableVertexAttribArray(texAttrib);
+
+}
+
+int ImageMenu::ProcessInput(float x, float y)
+{
+
+    int i = 1;
+
+    for(vector<Rect<float> >::iterator it = option_coords.begin();it!=option_coords.end();it++)
+    {
+
+        if(x>(it->left) && x<(it->left + it->width) && y<(it->top) && y>(it->top - it->height))
+        {
+            cout<<i<<endl;
+            return i;
+        }
+        i++;
+    }
+    cout<<0<<endl;
+    return 0;
+}
+
+ImageMenu::~ImageMenu()
+{
+    glDeleteBuffers(1, &vertex_buffer);
+    glDeleteBuffers(1, &tex_buffer);
+    glDeleteVertexArrays(1, &vao);
+
+    delete shader;
+    delete tex_pixels;
 }

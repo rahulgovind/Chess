@@ -18,6 +18,13 @@ using namespace std;
 
 #define EVENT_PROCESS_WAIT_TIME 0.03
 
+#define START_WINDOW 1
+#define START_WINDOW_ONE_PLAYER 1
+#define START_WINDOW_TWO_PLAYER 2
+#define START_WINDOW_EXIT_GAME 3
+
+#define PLAY_WINDOW 2
+
 struct RGBA
 {
     float r;
@@ -86,10 +93,12 @@ private:
     static int current_player;
 
     static bool single_player_mode;
+    static int display_status;
 
+    static vector<ImageMenu*> menu;
     int MainLoop(GLFWwindow*);
 public:
-    Chess2D(bool single_player=true,int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
+    Chess2D(int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
 
     int StartGame();
 
@@ -111,10 +120,11 @@ int Chess2D::prev_y = 0;
 int Chess2D::current_player = 1;
 
 bool Chess2D::single_player_mode = false;
+int Chess2D::display_status = 0;
+vector<ImageMenu*> Chess2D::menu;
 //Load vertex shader, Fragment shader, set glfw window hints, initialize data
-Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int boardheight)
+Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
 {
-    single_player_mode = single_player;
     window_width = width;
     window_height = height;
     board_width = (float)boardwidth*2/window_width;
@@ -174,7 +184,7 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
     num_elements = 8*8*6;
 
     //Load engine for chess
-    engine = new Engine(single_player_mode);
+    engine = new Engine(true);
     LoadBoardColor();
     LoadPieceTextures();
 
@@ -279,12 +289,25 @@ Chess2D::Chess2D(bool single_player, int width, int height, int boardwidth, int 
 
     //Deallocate memory used up by the image file
     unload_BMP(pixels);
+
+    Rect<int> r{0, 0, 800, 600};
+    Rect<int> op1{287, 174, 460, 100};
+    Rect<int> op2{253, 272, 480, 85};
+    Rect<int> op3{409, 382, 160, 77};
+
+    vector<Rect<int> > options;
+    options.push_back(op1);
+    options.push_back(op2);
+    options.push_back(op3);
+    menu.push_back(new ImageMenu("menu.bmp", 800, 600, r, options));
+
 }
 
 int Chess2D::StartGame()
 {
-    glfwShowWindow(window);
+    display_status = START_WINDOW;
 
+    glfwShowWindow(window);
     current_player = engine->GetCurrentPlayer();
 
     return MainLoop(window);
@@ -300,40 +323,47 @@ int Chess2D::MainLoop(GLFWwindow *window)
     while(!glfwWindowShouldClose(window))
     {
         current_player = engine->GetCurrentPlayer();
+;
 
         glClear(GL_COLOR_BUFFER_BIT);
-        DrawBoard();
 
-        int game_status = engine->GetGameStatus();
-        if(game_status == GAME_CHECK)
+        switch(display_status)
+        {
+        case PLAY_WINDOW:
         {
 
-            text.Draw(-0.25,0.5, 0.1, "Check!");
+            DrawBoard();
+
+            int game_status = engine->GetGameStatus();
+
+            //Get status of the game
+            //Game is stopped if there's either a checkmate or stalemate
+            switch(game_status)
+            {
+            case GAME_CHECK:
+                text.Draw(-0.25,0.5, 0.25, "Check!");
+                break;
+            case GAME_CHECKMATE:
+                stop_game = true;
+                if(engine->GetCurrentPlayer()==1)
+                {
+                    MessageBox(NULL, "Checkmate. Player 2 wins.", "Chess 2D",MB_OK);
+                }
+                else
+                {
+                    MessageBox(NULL, "Checkmate. Player 1 wins", "Chess 2D",MB_OK);
+                }
+                break;
+            case GAME_STALEMATE:
+
+                stop_game = true;
+                MessageBox(NULL, "Draw. Stalemate.", "Chess 2D",MB_OK);
+                break;
+            }
         }
-
-        //Get status of the game
-        //Game is stopped if there's either a checkmate or stalemate
-        switch(game_status)
-        {
-        case GAME_CHECK:
-            text.Draw(-0.25,0.5, 0.1, "Check!");
-            break;
-        case GAME_CHECKMATE:
-            stop_game = true;
-            if(engine->GetCurrentPlayer()==1)
-            {
-                text.Draw(-0.65, 0.5, 0.05, "Checkmate! Player 2 wins! ");
-            }
-            else
-            {
-                text.Draw(-0.65, 0.5, 0.05, "Checkmate! Player 1 wins!");
-            }
-            break;
-        case GAME_STALEMATE:
-
-            stop_game = true;
-            printf("Stalemate. Draw.\n");
-            MessageBox(NULL, "Draw. Stalemate.", "Chess 2D",MB_OK);
+        break;
+        case START_WINDOW:
+            menu[0]->DrawMenu();
             break;
         }
 
@@ -468,47 +498,72 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
     //Not take inputs when computer is thinking
     if(action ==GLFW_PRESS && engine->GetGameStatus()!=GAME_THINKING)
     {
+
         double x,y;
         glfwGetCursorPos(window, &x, &y);
 
-        x/=window_width;
-        y/=window_height;
-        x = 2*x - 1;
-        y = 1-2*y;
-
-        int square_x, square_y;
-        square_x = (x-board_left)*8/board_width;
-        square_y = (board_top - y)*8/board_height;
-
-        //Convert to coordinates used by engine
-        square_y = 7 - square_y;
-        if((x>=board_left && x<=board_left+board_width && y<=board_top && y>=board_top - board_height))
+        switch(display_status)
         {
-            if(!selected)
+        case PLAY_WINDOW:
+            x/=window_width;
+            y/=window_height;
+            x = 2*x - 1;
+            y = 1-2*y;
+
+            int square_x, square_y;
+            square_x = (x-board_left)*8/board_width;
+            square_y = (board_top - y)*8/board_height;
+
+            //Convert to coordinates used by engine
+            square_y = 7 - square_y;
+            if((x>=board_left && x<=board_left+board_width && y<=board_top && y>=board_top - board_height))
             {
-                if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                if(!selected)
                 {
-                    selected = true;
-                    prev_x = square_x;
-                    prev_y = square_y;
+                    if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                    {
+                        selected = true;
+                        prev_x = square_x;
+                        prev_y = square_y;
+                    }
+                }
+                else
+                {
+                    if(prev_x == square_x && prev_y == square_y)
+                        selected = false;
+                    else if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                    {
+                        selected = true;
+                        prev_x = square_x;
+                        prev_y = square_y;
+                    }
+                    else if(engine->IsValidMove(prev_x, prev_y, square_x, square_y))
+                    {
+                        selected = false;
+                        engine->ProcessInput(prev_x, prev_y, square_x, square_y);
+                    }
                 }
             }
-            else
+        break;
+        case START_WINDOW:
+            int result = menu[0]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+            if(result==START_WINDOW_ONE_PLAYER)
             {
-                if(prev_x == square_x && prev_y == square_y)
-                    selected = false;
-                else if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
-                {
-                    selected = true;
-                    prev_x = square_x;
-                    prev_y = square_y;
-                }
-                else if(engine->IsValidMove(prev_x, prev_y, square_x, square_y))
-                {
-                    selected = false;
-                    engine->ProcessInput(prev_x, prev_y, square_x, square_y);
-                }
+                single_player_mode = true;
+                engine = new Engine(true);
+                display_status = PLAY_WINDOW;
             }
+            else if(result == START_WINDOW_TWO_PLAYER)
+            {
+                single_player_mode = false;
+                engine = new Engine(false);
+                display_status = PLAY_WINDOW;
+            }
+            else if(result == START_WINDOW_EXIT_GAME)
+            {
+                glfwSetWindowShouldClose(window, true);
+            }
+            break;
         }
     }
 }

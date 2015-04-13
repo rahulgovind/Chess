@@ -265,7 +265,7 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
     float init_time = (float)clock()/CLOCKS_PER_SEC;
 
-    ai = test_engine->GetBestMove(AI_MEDIUM);
+    ai = test_engine->GetBestMove(AI_EASY);
     test_engine->PrintInfo();
 
 
