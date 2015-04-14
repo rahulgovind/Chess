@@ -54,16 +54,16 @@ using namespace std;
 #define STALEMATE_WINDOW_EXIT 2
 
 #define PAWN1_WINDOW 7
-#define PAWN1_KNIGHT 1
-#define PAWN1_ROOK 2
-#define PAWN1_QUEEN 3
-#define PAWN1_BISHOP 4
+#define PAWN1_KNIGHT 3
+#define PAWN1_ROOK 4
+#define PAWN1_QUEEN 1
+#define PAWN1_BISHOP 2
 
 #define PAWN2_WINDOW 8
-#define PAWN2_KNIGHT 1
-#define PAWN2_ROOK 2
-#define PAWN2_QUEEN 3
-#define PAWN2_BISHOP 4
+#define PAWN2_KNIGHT 3
+#define PAWN2_ROOK 4
+#define PAWN2_QUEEN 1
+#define PAWN2_BISHOP 2
 
 struct RGBA
 {
@@ -418,26 +418,30 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     //Load pawn promotion 1 menu
     {
         Rect<int> r{0, 0, 800, 600};
-        Rect<int> op1{21, 271, 208, 195};
-        Rect<int> op2{326,269, 192, 203};
-        Rect<int> op3{581, 275, 188,185};
+        Rect<int> op1{32, 296, 145, 141};
+        Rect<int> op2{261,299, 79, 141};
+        Rect<int> op3{424, 285, 161,164};
+        Rect<int> op4{619,287,157,167};
         vector<Rect<int> > options;
         options.push_back(op1);
         options.push_back(op2);
         options.push_back(op3);
+        options.push_back(op4);
         menu.push_back(new ImageMenu("images/pawn1_menu.bmp", 800, 600, r, options));
     }
 
     //Load pawn promotion 2 menu
     {
         Rect<int> r{0, 0, 800, 600};
-        Rect<int> op1{21, 271, 208, 195};
-        Rect<int> op2{326,269, 192, 203};
-        Rect<int> op3{581, 275, 188,185};
+        Rect<int> op1{32, 296, 145, 141};
+        Rect<int> op2{261,299, 79, 141};
+        Rect<int> op3{424, 285, 161,164};
+        Rect<int> op4{619,287,157,167};
         vector<Rect<int> > options;
         options.push_back(op1);
         options.push_back(op2);
         options.push_back(op3);
+        options.push_back(op4);
         menu.push_back(new ImageMenu("images/pawn2_menu.bmp", 800, 600, r, options));
     }
 }
@@ -875,8 +879,11 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
                     pawn_promo_code = 3;
                     break;
                 }
-                engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
-                display_status = PLAY_WINDOW;
+                if(result!=0)
+                {
+                    engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
+                    display_status = PLAY_WINDOW;
+                }
                 break;
             }
             case PAWN2_WINDOW:
@@ -898,8 +905,11 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
                     pawn_promo_code = 3;
                     break;
                 }
-                engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
-                display_status = PLAY_WINDOW;
+                if(result!=0)
+                {
+                    engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
+                    display_status = PLAY_WINDOW;
+                }
                 break;
             }
         }
@@ -911,9 +921,12 @@ void Chess2D::ProcessKeyInput(GLFWwindow* window, int key, int scancode, int act
     //Ctrl-z is keyboard shortcut for undo
     if(key==GLFW_KEY_Z && mods==GLFW_MOD_CONTROL && action==GLFW_PRESS)
     {
-        bool modified = engine->UndoGame();
-        if(modified)
-            selected=false;
+        if(display_status == PLAY_WINDOW || display_status == RESUME_WINDOW)
+        {
+            bool modified = engine->UndoGame();
+            if(modified)
+                selected=false;
+        }
     }
     else if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     {
