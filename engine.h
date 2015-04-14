@@ -18,19 +18,21 @@ private:
     int game_status;
     bool player1;
     bool ai_mode;
+    int ai_difficulty;
     moves prev_ai_move;
 
     static long unsigned int __stdcall AIThread(void*);
 public:
-    Engine(bool);
+    Engine(bool AI_mode, int difficulty=1);
     Engine(bool, string);
     int GetGameStatus();
     int GetCurrentPlayer();
     int GetPiece(int x, int y);
-    void ProcessInput(int x0, int y0, int x1, int y1);
+    void ProcessInput(int x0, int y0, int x1, int y1, int pawn_promo=0);
     moves GetAIMove();
     void MakeAIMove();
     bool UndoGame();
+    bool IsPawnPromotion(int,int,int,int);
 };
 
 

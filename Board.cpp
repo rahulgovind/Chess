@@ -760,3 +760,4 @@ bool Board::IsValidEnPassant2(int x0, int y0, int x1, int y1)
     }
     return false;
 }
+

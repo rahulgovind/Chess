@@ -2,7 +2,13 @@
 #include <windows.h>
 #include <ctime>
 
+//Evaluation points
+//for material advantage
+
 const int values[] = { 0, 100, 300, 300, 500, 900, 100000};
+
+//Different evaluation bonus points for
+//Positional advantage
 
 const int mobility_value = 3;
 const int castle_value = 60;
@@ -53,6 +59,7 @@ moves EngineAI::GetBestMove(int level)
         stage = AI_MIDDLE_GAME;
     }
 
+    //Create thread to look for best move
     HANDLE hThread = CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
 
     modified = false;
@@ -83,6 +90,7 @@ moves EngineAI::GetBestMove(int level)
 
 long unsigned int __stdcall EngineAI::AIThread(void *input)
 {
+    //Create EngineAI object to look for best move
     EngineAI *engine_ai = (EngineAI*)input;
     engine_ai->best_move = engine_ai->minimax_base(engine_ai->max_d);
     engine_ai->modified = true;
@@ -91,6 +99,7 @@ long unsigned int __stdcall EngineAI::AIThread(void *input)
 
 void EngineAI::PrintInfo()
 {
+    //Print AI Level
     printf("AI level: ");
     switch(level)
     {
@@ -104,6 +113,7 @@ void EngineAI::PrintInfo()
         printf("Hard\n");
         break;
     }
+    //Print game stage
     printf("Game stage: ");
     switch(stage)
     {
@@ -118,6 +128,7 @@ void EngineAI::PrintInfo()
         break;
     }
 
+    //Print other AI statistics
     printf("Base max depth: %u\n", (modified)? max_d-1 : max_d);
     printf("Total leaves evaluated: %u\n", total_moves);
     printf("Maximum extra moves for quiescence: %u\n", quies_extra_max);
@@ -271,6 +282,10 @@ int EngineAI::EvaluateEndGame()
     return result;
 }
 
+//Main evaluation function
+//Calls appropriate evaluation function based
+//on game stage
+
 int EngineAI::EvaluateFunction()
 {
     total_moves++;
@@ -284,6 +299,9 @@ int EngineAI::EvaluateFunction()
         return EvaluateEndGame();
     }
 }
+
+//Counts the total number of possible moves
+//for a given game state
 
 int EngineAI::CountPossibleMoves(bool player1)
 {
@@ -303,6 +321,7 @@ int EngineAI::CountPossibleMoves(bool player1)
 
 }
 
+//Minimax part for maximizing player
 int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
 {
     if(depth<=max_depth+extra)
@@ -374,7 +393,7 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
         }
     }
 
-    //Quiescence
+    //Quiescence search
     int total_pieces_lost = 0;
     for(int i=1;i<=6;i++)
         total_pieces_lost+= pieces_lost1[i] + pieces_lost2[i];
@@ -388,6 +407,7 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
     return EvaluateFunction();
 }
 
+//Minimax part for the minimizing player
 int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
 {
 
@@ -471,6 +491,9 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
     return EvaluateFunction();
 }
 
+//Base function for minimax
+//Sets appropriate variables
+//and then does the maximizing part
 moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
 {
     for(int i=0;i<7;i++)

@@ -158,7 +158,7 @@ Text::Text()
 
     glBindFragDataLocation(shader_program, 0, "outColor");
 
-    tex_pixels = loadBMP("ExportedFont.bmp", &tex_width, &tex_height);
+    tex_pixels = loadBMP("images/ExportedFont.bmp", &tex_width, &tex_height);
     glGenTextures(1, &texture);
 }
 
@@ -367,12 +367,11 @@ int ImageMenu::ProcessInput(float x, float y)
 
         if(x>(it->left) && x<(it->left + it->width) && y<(it->top) && y>(it->top - it->height))
         {
-            cout<<i<<endl;
             return i;
         }
         i++;
     }
-    cout<<0<<endl;
+
     return 0;
 }
 

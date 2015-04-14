@@ -18,12 +18,52 @@ using namespace std;
 
 #define EVENT_PROCESS_WAIT_TIME 0.03
 
+#define AI_EASY 1
+#define AI_MEDIUM 2
+#define AI_HARD 3
+
+#define AI_OPENING 10
+#define AI_MIDDLE_GAME 11
+#define AI_END_GAME 12
+
 #define START_WINDOW 1
-#define START_WINDOW_ONE_PLAYER 1
-#define START_WINDOW_TWO_PLAYER 2
-#define START_WINDOW_EXIT_GAME 3
+#define START_WINDOW_ONE_PLAYER_EASY 1
+#define START_WINDOW_ONE_PLAYER_MEDIUM 2
+#define START_WINDOW_ONE_PLAYER_HARD 3
+#define START_WINDOW_TWO_PLAYER 4
+#define START_WINDOW_EXIT_GAME 5
 
 #define PLAY_WINDOW 2
+
+#define RESUME_WINDOW 3
+#define RESUME_WINDOW_RESUME 1
+#define RESUME_WINDOW_UNDO 2
+#define RESUME_WINDOW_BACK 3
+#define RESUME_WINDOW_EXIT 4
+
+#define CHECKMATE1_WINDOW 4
+#define CHECKMATE1_WINDOW_BACK 1
+#define CHECKMATE1_WINDOW_EXIT 2
+
+#define CHECKMATE2_WINDOW 5
+#define CHECKMATE2_WINDOW_BACK 1
+#define CHECKMATE2_WINDOW_EXIT 2
+
+#define STALEMATE_WINDOW 6
+#define STALEMATE_WINDOW_BACK 1
+#define STALEMATE_WINDOW_EXIT 2
+
+#define PAWN1_WINDOW 7
+#define PAWN1_KNIGHT 1
+#define PAWN1_ROOK 2
+#define PAWN1_QUEEN 3
+#define PAWN1_BISHOP 4
+
+#define PAWN2_WINDOW 8
+#define PAWN2_KNIGHT 1
+#define PAWN2_ROOK 2
+#define PAWN2_QUEEN 3
+#define PAWN2_BISHOP 4
 
 struct RGBA
 {
@@ -90,6 +130,8 @@ private:
     static int prev_x;
     static int prev_y;
 
+    static moves pawn_promo_move;
+
     static int current_player;
 
     static bool single_player_mode;
@@ -122,6 +164,8 @@ int Chess2D::current_player = 1;
 bool Chess2D::single_player_mode = false;
 int Chess2D::display_status = 0;
 vector<ImageMenu*> Chess2D::menu;
+moves Chess2D::pawn_promo_move = moves(-1,-1,-1,-1);
+
 //Load vertex shader, Fragment shader, set glfw window hints, initialize data
 Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
 {
@@ -194,6 +238,8 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
         fputs("Unable to load GLFW\n", stderr);
         return;
     }
+    //Set appropriate window hints to
+    //load OpenGL
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -203,6 +249,8 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
+    //Create window
+    //And set appropriate window settings
     window = glfwCreateWindow(window_width, window_height, "Chess 2D", NULL, NULL);
     if(!window)
     {
@@ -221,10 +269,15 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
         }
     }
 
+    //Set callback functions for
+    //Mouse and keyboard events
+
     glfwSetMouseButtonCallback(window, ProcessMouseInput);
     glfwSetKeyCallback(window, ProcessKeyInput);
     glfwMakeContextCurrent(window);
 
+    //Initialize glew to
+    //Link to OpenGL functions
     glewExperimental = GL_TRUE;
     if(glewInit()!=GLEW_OK)
     {
@@ -246,6 +299,7 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eao);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, num_elements*sizeof(GLuint), &elements[0], GL_STATIC_DRAW);
 
+    //Load Shaders
     board_shader = new Shader(vertex_shader_source, fragment_shader_source);
     board_shader->Load();
 
@@ -264,7 +318,7 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
 
     //Load the texture file
     int tex_width, tex_height;
-    unsigned char* pixels = loadBMP("chess.bmp", &tex_width, &tex_height);
+    unsigned char* pixels = loadBMP("images/chess.bmp", &tex_width, &tex_height);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     unload_BMP(pixels);
     //Set position attribute
@@ -290,23 +344,109 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     //Deallocate memory used up by the image file
     unload_BMP(pixels);
 
-    Rect<int> r{0, 0, 800, 600};
-    Rect<int> op1{287, 174, 460, 100};
-    Rect<int> op2{253, 272, 480, 85};
-    Rect<int> op3{409, 382, 160, 77};
+    //Load start menu
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{160, 190, 530, 47};
+        Rect<int> op2{87, 264, 633, 49};
+        Rect<int> op3{136, 347, 556, 50};
+        Rect<int> op4{236, 432, 326, 52};
+        Rect<int> op5{330, 520, 109, 53};
 
-    vector<Rect<int> > options;
-    options.push_back(op1);
-    options.push_back(op2);
-    options.push_back(op3);
-    menu.push_back(new ImageMenu("menu.bmp", 800, 600, r, options));
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        options.push_back(op3);
+        options.push_back(op4);
+        options.push_back(op5);
+        menu.push_back(new ImageMenu("images/start_menu.bmp", 800, 600, r, options));
+    }
 
+    //Load resume menu
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{166, 84, 524, 61};
+        Rect<int> op2{300, 180, 198, 62};
+        Rect<int> op3{57, 280, 708, 65};
+        Rect<int> op4{330, 374, 146, 68};
+
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        options.push_back(op3);
+        options.push_back(op4);
+        menu.push_back(new ImageMenu("images/resume_menu.bmp", 800, 600, r, options));
+    }
+
+    //Load checkmate menu where player 1 wins
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{101, 296, 632, 55};
+        Rect<int> op2{328, 389, 124, 57};
+
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        menu.push_back(new ImageMenu("images/checkmate1_menu.bmp", 800, 600, r, options));
+    }
+
+    //Load checkmate menu where player 2 wins
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{101, 296, 632, 55};
+        Rect<int> op2{328, 389, 124, 57};
+
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        menu.push_back(new ImageMenu("images/checkmate2_menu.bmp", 800, 600, r, options));
+    }
+
+    //Load stalemate menu
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{110, 296, 632, 55};
+        Rect<int> op2{347, 389, 124, 57};
+
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        menu.push_back(new ImageMenu("images/stalemate_menu.bmp", 800, 600, r, options));
+
+    }
+
+    //Load pawn promotion 1 menu
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{21, 271, 208, 195};
+        Rect<int> op2{326,269, 192, 203};
+        Rect<int> op3{581, 275, 188,185};
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        options.push_back(op3);
+        menu.push_back(new ImageMenu("images/pawn1_menu.bmp", 800, 600, r, options));
+    }
+
+    //Load pawn promotion 2 menu
+    {
+        Rect<int> r{0, 0, 800, 600};
+        Rect<int> op1{21, 271, 208, 195};
+        Rect<int> op2{326,269, 192, 203};
+        Rect<int> op3{581, 275, 188,185};
+        vector<Rect<int> > options;
+        options.push_back(op1);
+        options.push_back(op2);
+        options.push_back(op3);
+        menu.push_back(new ImageMenu("images/pawn2_menu.bmp", 800, 600, r, options));
+    }
 }
 
 int Chess2D::StartGame()
 {
     display_status = START_WINDOW;
 
+    //Show window and start game
     glfwShowWindow(window);
     current_player = engine->GetCurrentPlayer();
 
@@ -315,18 +455,22 @@ int Chess2D::StartGame()
 
 int Chess2D::MainLoop(GLFWwindow *window)
 {
+    //prev_event_time with glfwGetTime()
+    //is used to create delay between
+    //consecutive page refreshes
 
-    bool stop_game = false;
     double prev_event_time = glfwGetTime();
 
+    //Text object which writes text on window
     Text text;
     while(!glfwWindowShouldClose(window))
     {
         current_player = engine->GetCurrentPlayer();
-;
 
+        //Clear color buffer bit i.e. previous drawings
         glClear(GL_COLOR_BUFFER_BIT);
 
+        //Draw the correct window
         switch(display_status)
         {
         case PLAY_WINDOW:
@@ -341,44 +485,60 @@ int Chess2D::MainLoop(GLFWwindow *window)
             switch(game_status)
             {
             case GAME_CHECK:
-                text.Draw(-0.25,0.5, 0.25, "Check!");
+                text.Draw(-0.2,0.5, 0.25, "Check!");
                 break;
             case GAME_CHECKMATE:
-                stop_game = true;
                 if(engine->GetCurrentPlayer()==1)
                 {
-                    MessageBox(NULL, "Checkmate. Player 2 wins.", "Chess 2D",MB_OK);
+                    display_status = CHECKMATE2_WINDOW;
                 }
                 else
                 {
-                    MessageBox(NULL, "Checkmate. Player 1 wins", "Chess 2D",MB_OK);
+                    display_status = CHECKMATE1_WINDOW;
+
                 }
                 break;
             case GAME_STALEMATE:
 
-                stop_game = true;
-                MessageBox(NULL, "Draw. Stalemate.", "Chess 2D",MB_OK);
+                display_status = STALEMATE_WINDOW;
                 break;
             }
         }
         break;
+
+        //Draw the appropriate menu
         case START_WINDOW:
             menu[0]->DrawMenu();
             break;
+        case RESUME_WINDOW:
+            menu[1]->DrawMenu();
+            break;
+        case CHECKMATE1_WINDOW:
+            menu[2]->DrawMenu();
+            break;
+        case CHECKMATE2_WINDOW:
+            menu[3]->DrawMenu();
+            break;
+        case STALEMATE_WINDOW:
+            menu[4]->DrawMenu();
+            break;
+        case PAWN1_WINDOW:
+            menu[5]->DrawMenu();
+            break;
+        case PAWN2_WINDOW:
+            menu[6]->DrawMenu();
+            break;
         }
 
+        //Swap buffers to display final window
         glfwSwapBuffers(window);
-        if(stop_game)
-        {
-
-            glfwSetWindowShouldClose(window, GL_TRUE);
-        }
 
 
-
+        //Create delay between consecutive refreshes
         while(glfwGetTime()-prev_event_time<EVENT_PROCESS_WAIT_TIME)
             Sleep(1);
         prev_event_time = glfwGetTime();
+
         glfwPollEvents();
     }
 
@@ -386,15 +546,27 @@ int Chess2D::MainLoop(GLFWwindow *window)
 }
 void Chess2D::DrawBoard()
 {
+    //Load texture for board
+    //Basically the different pieces on the board
     LoadPieceTextures();
+
+    //Load color for the board
+    //This includes colors forselected pieces
     LoadBoardColor();
+
+    //Load data to OpenGL Buffers
     glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GLfloat), &vertices[0]);
+
+    //Finally draw the board
     glDrawElements(GL_TRIANGLES, 8*8*6, GL_UNSIGNED_INT, 0);
 }
 
 Chess2D::~Chess2D()
 {
+    //Call destructor for shader
     delete board_shader;
+
+    //Delete buffers allocated for board
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &eao);
     glDeleteVertexArrays(1, &vao);
@@ -404,13 +576,18 @@ Chess2D::~Chess2D()
 
 void Chess2D::LoadBoardColor()
 {
+    //default prev_ai_move is -2,-2,-2,-2.
+    //Anything that is not legal
     static moves prev_ai_move = moves(-2,-2,-2,-2);
     moves ai_move;
     int index = 0;
+
+    //Load selections for ai player's move
+    //if single_player_mode is loaded
     if(single_player_mode)
         ai_move = engine->GetAIMove();
 
-
+    //Load board colors
     for(int j=0;j<8;j++)
         for(int i = 0;i<8;i++)
         {
@@ -473,6 +650,10 @@ void Chess2D::LoadBoardColor()
 
 void Chess2D::LoadPieceTextures()
 {
+    //Load textures for board
+    //These textures represent
+    //the different pieces
+
     int index = 0;
     for(int j=0;j<8;j++)
         for(int i=0;i<8;i++)
@@ -500,81 +681,245 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
     {
 
         double x,y;
+
+        //Get cursor position
         glfwGetCursorPos(window, &x, &y);
 
+        //Process the input
+        //correctly
+        //based on the window being displayed
         switch(display_status)
         {
-        case PLAY_WINDOW:
-            x/=window_width;
-            y/=window_height;
-            x = 2*x - 1;
-            y = 1-2*y;
+            case PLAY_WINDOW:
+                x/=window_width;
+                y/=window_height;
+                x = 2*x - 1;
+                y = 1-2*y;
 
-            int square_x, square_y;
-            square_x = (x-board_left)*8/board_width;
-            square_y = (board_top - y)*8/board_height;
+                int square_x, square_y;
+                square_x = (x-board_left)*8/board_width;
+                square_y = (board_top - y)*8/board_height;
 
-            //Convert to coordinates used by engine
-            square_y = 7 - square_y;
-            if((x>=board_left && x<=board_left+board_width && y<=board_top && y>=board_top - board_height))
-            {
-                if(!selected)
+                //Convert to coordinates used by engine
+                square_y = 7 - square_y;
+                if((x>=board_left && x<=board_left+board_width && y<=board_top && y>=board_top - board_height))
                 {
-                    if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                    if(!selected)
                     {
-                        selected = true;
-                        prev_x = square_x;
-                        prev_y = square_y;
+                        if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                        {
+                            selected = true;
+                            prev_x = square_x;
+                            prev_y = square_y;
+                        }
+                    }
+                    else
+                    {
+                        if(prev_x == square_x && prev_y == square_y)
+                            selected = false;
+                        else if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
+                        {
+                            selected = true;
+                            prev_x = square_x;
+                            prev_y = square_y;
+                        }
+                        else if(engine->IsValidMove(prev_x, prev_y, square_x, square_y))
+                        {
+                            selected = false;
+                            if(engine->IsPawnPromotion(prev_x, prev_y, square_x, square_y))
+                            {
+
+                                pawn_promo_move = moves(prev_x, prev_y, square_x, square_y);
+                                if(current_player == 1)
+                                    display_status = PAWN1_WINDOW;
+                                else if(current_player == 2)
+                                    display_status = PAWN2_WINDOW;
+
+                                break;
+                            }
+                            engine->ProcessInput(prev_x, prev_y, square_x, square_y);
+                        }
                     }
                 }
-                else
-                {
-                    if(prev_x == square_x && prev_y == square_y)
-                        selected = false;
-                    else if((current_player==1 && engine->GetPiece(square_x,square_y)>0) || (current_player==2 && engine->GetPiece(square_x, square_y)<0))
-                    {
-                        selected = true;
-                        prev_x = square_x;
-                        prev_y = square_y;
-                    }
-                    else if(engine->IsValidMove(prev_x, prev_y, square_x, square_y))
-                    {
-                        selected = false;
-                        engine->ProcessInput(prev_x, prev_y, square_x, square_y);
-                    }
-                }
-            }
-        break;
-        case START_WINDOW:
-            int result = menu[0]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
-            if(result==START_WINDOW_ONE_PLAYER)
-            {
-                single_player_mode = true;
-                engine = new Engine(true);
-                display_status = PLAY_WINDOW;
-            }
-            else if(result == START_WINDOW_TWO_PLAYER)
-            {
-                single_player_mode = false;
-                engine = new Engine(false);
-                display_status = PLAY_WINDOW;
-            }
-            else if(result == START_WINDOW_EXIT_GAME)
-            {
-                glfwSetWindowShouldClose(window, true);
-            }
             break;
+            case START_WINDOW:
+            {
+                int result = menu[0]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                if(result==START_WINDOW_ONE_PLAYER_EASY)
+                {
+                    single_player_mode = true;
+                    if(engine)
+                        delete engine;
+                    engine = new Engine(true, AI_EASY);
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result==START_WINDOW_ONE_PLAYER_MEDIUM)
+                {
+                    single_player_mode = true;
+                    if(engine)
+                        delete engine;
+                    engine = new Engine(true, AI_MEDIUM);
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result==START_WINDOW_ONE_PLAYER_HARD)
+                {
+                    single_player_mode = true;
+                    if(engine)
+                        delete engine;
+                    engine = new Engine(true, AI_HARD);
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result == START_WINDOW_TWO_PLAYER)
+                {
+                    single_player_mode = false;
+                    if(engine)
+                        delete engine;
+                    engine = new Engine(false);
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result == START_WINDOW_EXIT_GAME)
+                {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                break;
+            }
+            case RESUME_WINDOW:
+            {
+                int result = menu[1]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                if(result == RESUME_WINDOW_RESUME)
+                {
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result == RESUME_WINDOW_UNDO)
+                {
+                    bool modified = engine->UndoGame();
+                    if(modified)
+                        selected=false;
+                    display_status = PLAY_WINDOW;
+                }
+                else if(result == RESUME_WINDOW_BACK)
+                {
+                    display_status = START_WINDOW;
+                    selected = false;
+                }
+                else if(result == RESUME_WINDOW_EXIT)
+                {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                break;
+            }
+            case CHECKMATE1_WINDOW:
+            {
+                int result = menu[2]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                if(result==CHECKMATE1_WINDOW_BACK)
+                {
+                    display_status = START_WINDOW;
+                    selected = false;
+                }
+                else if(result==CHECKMATE1_WINDOW_EXIT)
+                {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                break;
+            }
+            case CHECKMATE2_WINDOW:
+            {
+                int result = menu[3]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                if(result==CHECKMATE2_WINDOW_BACK)
+                {
+                    display_status = START_WINDOW;
+                    selected = false;
+                }
+                else if(result==CHECKMATE2_WINDOW_EXIT)
+                {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                break;
+            }
+            case STALEMATE_WINDOW:
+            {
+                int result = menu[4]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                if(result==STALEMATE_WINDOW_BACK)
+                {
+                    display_status = START_WINDOW;
+                    selected = false;
+                }
+                else if(result==STALEMATE_WINDOW_EXIT)
+                {
+                    glfwSetWindowShouldClose(window, true);
+                }
+                break;
+            }
+            case PAWN1_WINDOW:
+            {
+                int pawn_promo_code = 0;
+                int result = menu[5]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                switch(result)
+                {
+                case PAWN1_QUEEN:
+                    pawn_promo_code = 0;
+                    break;
+                case PAWN1_BISHOP:
+                    pawn_promo_code = 1;
+                    break;
+                case PAWN1_KNIGHT:
+                    pawn_promo_code = 2;
+                    break;
+                case PAWN1_ROOK:
+                    pawn_promo_code = 3;
+                    break;
+                }
+                engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
+                display_status = PLAY_WINDOW;
+                break;
+            }
+            case PAWN2_WINDOW:
+            {
+                int pawn_promo_code = 0;
+                int result = menu[6]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+                switch(result)
+                {
+                case PAWN2_QUEEN:
+                    pawn_promo_code = 0;
+                    break;
+                case PAWN2_BISHOP:
+                    pawn_promo_code = 1;
+                    break;
+                case PAWN2_KNIGHT:
+                    pawn_promo_code = 2;
+                    break;
+                case PAWN2_ROOK:
+                    pawn_promo_code = 3;
+                    break;
+                }
+                engine->ProcessInput(pawn_promo_move.x0, pawn_promo_move.y0, pawn_promo_move.x1, pawn_promo_move.y1, pawn_promo_code);
+                display_status = PLAY_WINDOW;
+                break;
+            }
         }
     }
 }
 
 void Chess2D::ProcessKeyInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    //Ctrl-z is keyboard shortcut for undo
     if(key==GLFW_KEY_Z && mods==GLFW_MOD_CONTROL && action==GLFW_PRESS)
     {
         bool modified = engine->UndoGame();
         if(modified)
             selected=false;
+    }
+    else if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    {
+        if(display_status == PLAY_WINDOW)
+        {
+            display_status = RESUME_WINDOW;
+        }
+        else if(display_status == RESUME_WINDOW)
+        {
+            display_status = PLAY_WINDOW;
+        }
+
     }
 }
 #endif // _CHESS2D_H

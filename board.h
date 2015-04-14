@@ -49,7 +49,9 @@ protected:
     bool IsValidCastle2(int,int,int,int);
     bool IsValidEnPassant1(int,int,int,int);
     bool IsValidEnPassant2(int,int,int,int);
-    int MakeMove(int x0, int y0, int x1, int y1);
+
+
+    int MakeMove(int x0, int y0, int x1, int y1, int pawn_promo=1);
     void UndoMove(int,int,int,int,int,int);
 public:
     Board();

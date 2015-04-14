@@ -3,7 +3,11 @@
 
 using namespace std;
 
-Engine::Engine(bool AI_mode):Board()
+//constructor for engine
+//AI_mode determines where the engine
+//is in single player mode
+//or two player mode
+Engine::Engine(bool AI_mode, int difficulty):Board()
 {
 
     player1 = true;
@@ -15,8 +19,11 @@ Engine::Engine(bool AI_mode):Board()
     prev_ai_move.y1 = -1;
 
     ai_mode = AI_mode;
+    ai_difficulty = difficulty;
 }
 
+//Engine constructor used for
+//reconstructing old game
 Engine::Engine(bool AI_mode, string fname)
 {
     try
@@ -58,23 +65,33 @@ Engine::Engine(bool AI_mode, string fname)
         cout<<"Error reading from "<<fname<<endl;
     }
 }
+
+//Returns status of the game
+//Like check or checkmate or stalemate
 int Engine::GetGameStatus()
 {
     return game_status;
 }
 
+//Returns which player is current playing
 int Engine::GetCurrentPlayer()
 {
     if(player1)
         return 1;
     else return 2;
 }
+
+//Returns the id of the piece
+//at position (x,y) on the board
+
 int Engine::GetPiece(int x, int y)
 {
     return board_matrix[x][y];
 }
 
-void Engine::ProcessInput(int x0, int y0, int x1, int y1)
+
+//Process input given to the Engine
+void Engine::ProcessInput(int x0, int y0, int x1, int y1, int pawn_promo)
 {
     if((player1 && board_matrix[x0][y0]>0) || (!player1 && board_matrix[x0][y0]<0))
         if(IsValidMove(x0, y0, x1, y1))
@@ -96,7 +113,7 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
                     cout<<"Error writing to file"<<endl;
                 }
             }
-            MakeMove(x0, y0, x1, y1);
+            MakeMove(x0, y0, x1, y1, pawn_promo);
             player1 = !player1;
 
             if((player1 && IsCheck1()) || (!player1 && IsCheck2()))
@@ -118,8 +135,14 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1)
         }
 }
 
-
-int Board::MakeMove(int x0, int y0, int x1, int y1)
+//Make a move
+//from x0, y0
+//to x1, y1
+//Does not check if the move is valid
+//Returns either the id of the captured piece
+//or special values for special moves
+//like castling and en passant
+int Board::MakeMove(int x0, int y0, int x1, int y1, int pawn_promo)
 {
     previous_moves.push_back(moves(x0,y0,x1,y1));
     int temp = board_matrix[x1][y1];
@@ -128,15 +151,58 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
 
     if(y1 == 7 && board_matrix[x1][y1] == 1)
     {
-        //Handle pawn promotion
-        board_matrix[x1][y1] = 5;
-        temp -= 9;
+
+        if(pawn_promo == 0)
+        {
+            //Handle pawn promotion for queen
+            board_matrix[x1][y1] = 5;
+            temp -= 9;
+        }
+        else if(pawn_promo == 1)
+        {
+            //Pawn promotion for bishop
+            board_matrix[x1][y1] = 2;
+            temp -= 16;
+        }
+        else if(pawn_promo == 2)
+        {
+            //Pawn promotion for knight
+            board_matrix[x1][y1] = 3;
+            temp -= 23;
+        }
+        else if(pawn_promo == 3)
+        {
+            //Pawn promotion for queen
+            board_matrix[x1][y1] = 4;
+            temp -=30;
+        }
     }
     else if(y1 == 0 && board_matrix[x1][y1] == -1)
     {
-        //Handle pawn promotion
-        board_matrix[x1][y1] = -5;
-        temp += 9;
+        if(pawn_promo == 0)
+        {
+            //Handle pawn promotion for queen
+            board_matrix[x1][y1] = -5;
+            temp += 9;
+        }
+        else if(pawn_promo == 1)
+        {
+            //Pawn promotion for bishop
+            board_matrix[x1][y1] = -2;
+            temp += 16;
+        }
+        else if(pawn_promo == 2)
+        {
+            //Pawn promotion for knight
+            board_matrix[x1][y1] = -3;
+            temp += 23;
+        }
+        else if(pawn_promo == 3)
+        {
+            //Pawn promotion for queen
+            board_matrix[x1][y1] = -4;
+            temp +=30;
+        }
     }
     else if(board_matrix[x1][y1]==6 && y1==0 && y0==0 && abs(x1-x0)==2)
     {
@@ -190,16 +256,27 @@ int Board::MakeMove(int x0, int y0, int x1, int y1)
     return temp;
 }
 
+//Undo move
+//Requires caller to know information
+//about the move to undo
 void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
 {
     previous_moves.pop_back(); //temporary
     if(piece1 >=9 || piece1 <= -9)
     {
         //Pawn promotion undo
-        if(piece1>0)
+        if(piece1>=9 && piece1<16)
             piece1-=9;
-        else
+        else if(piece1>=16 && piece1<23)
+            piece1-=16;
+        else if(piece1>=23 && piece1<30)
+            piece1-=23;
+        else if(piece1> -16 && piece1<=-9)
             piece1+=9;
+        else if(piece1> -23 && piece1<=-16)
+            piece1+=16;
+        else if(piece1> -30 && piece1<=-23)
+            piece1+=23;
     }
     else if(piece1 == 7)
     {
@@ -248,10 +325,16 @@ void Board::UndoMove(int piece0, int piece1, int x0, int y0, int x1, int y1)
 
 }
 
+//Caller gets the previous move
+//made by the AI
 moves Engine::GetAIMove()
 {
     return prev_ai_move;
 }
+
+//Thread function called
+//which starts EngineAI object
+//and looks for best move
 
 long unsigned int __stdcall Engine::AIThread(void *input)
 {
@@ -265,7 +348,7 @@ long unsigned int __stdcall Engine::AIThread(void *input)
 
     float init_time = (float)clock()/CLOCKS_PER_SEC;
 
-    ai = test_engine->GetBestMove(AI_EASY);
+    ai = test_engine->GetBestMove(main_engine->ai_difficulty);
     test_engine->PrintInfo();
 
 
@@ -276,6 +359,9 @@ long unsigned int __stdcall Engine::AIThread(void *input)
     return 0;
 }
 
+//Creates thread to look for AI Move
+//and expects the thread function to
+//make the move too
 void Engine::MakeAIMove()
 {
     //AIThread(this);
@@ -283,6 +369,10 @@ void Engine::MakeAIMove()
     CreateThread(NULL, 0, AIThread, (void*)this, 0, 0);
 }
 
+//Undo the game
+//This works by replaying the moves from the start
+//upto the previous move
+//(or the move before the previous move for AI)
 bool Engine::UndoGame()
 {
     bool modified = false;
@@ -324,4 +414,19 @@ bool Engine::UndoGame()
     }
 
     return modified;
+}
+
+bool Engine::IsPawnPromotion(int x0, int y0, int x1, int y1)
+{
+
+    if(IsValidMove(x0,y0,x1,y1))
+    {
+        int prev_0 = board_matrix[x0][y0];
+        if(prev_0 == 1 && y0 == 6 && y1 == 7)
+            return true;
+        else if(prev_0 == -1 && y0 == 1 && y1 == 0)
+            return true;
+    }
+
+    return false;
 }
