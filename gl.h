@@ -99,7 +99,7 @@ private:
     vector<Rect<float> > option_coords;
 public:
     ImageMenu(string, int window_width, int window_height, Rect<int> Boundary, vector<Rect<int> > Option_coords);
-    void DrawMenu();
+    void DrawMenu(bool translucent = false);
     int ProcessInput(float x, float y);
     ~ImageMenu();
 };

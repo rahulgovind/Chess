@@ -511,22 +511,28 @@ int Chess2D::MainLoop(GLFWwindow *window)
             menu[0]->DrawMenu();
             break;
         case RESUME_WINDOW:
-            menu[1]->DrawMenu();
+            DrawBoard();
+            menu[1]->DrawMenu(true);
             break;
         case CHECKMATE1_WINDOW:
-            menu[2]->DrawMenu();
+            DrawBoard();
+            menu[2]->DrawMenu(true);
             break;
         case CHECKMATE2_WINDOW:
-            menu[3]->DrawMenu();
+            DrawBoard();
+            menu[3]->DrawMenu(true);
             break;
         case STALEMATE_WINDOW:
-            menu[4]->DrawMenu();
+            DrawBoard();
+            menu[4]->DrawMenu(true);
             break;
         case PAWN1_WINDOW:
-            menu[5]->DrawMenu();
+            DrawBoard();
+            menu[5]->DrawMenu(true);
             break;
         case PAWN2_WINDOW:
-            menu[6]->DrawMenu();
+            DrawBoard();
+            menu[6]->DrawMenu(true);
             break;
         }
 
@@ -795,7 +801,7 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
                     bool modified = engine->UndoGame();
                     if(modified)
                         selected=false;
-                    display_status = PLAY_WINDOW;
+                    //display_status = PLAY_WINDOW;
                 }
                 else if(result == RESUME_WINDOW_BACK)
                 {

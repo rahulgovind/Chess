@@ -52,7 +52,7 @@ const char *imagemenu_fragment_shader =    "#version 150\n"
                             "void main()\n"
                             "{\n"
                             "vec4 temp = texture(tex, Texcoord);\n"
-                            "outColor = temp;\n"
+                            "outColor = vec4(temp[0], temp[1], temp[2], 0.85);\n"
                             "}\n";
 
 Shader::Shader(string vertex_source, string fragment_source)
@@ -299,11 +299,19 @@ ImageMenu::ImageMenu(string filename, int window_width, int window_height, Rect<
 
 }
 
-void ImageMenu::DrawMenu()
+void ImageMenu::DrawMenu(bool translucent)
 {
     GLSave save;
 
-    glDisable(GL_BLEND);
+    if(translucent == false)
+    {
+        glDisable(GL_BLEND);
+    }
+    else
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
     glBindVertexArray(vao);
     vector<glm::vec2> vertices;
     vector<glm::vec2> texcoords;

@@ -321,6 +321,11 @@ int EngineAI::CountPossibleMoves(bool player1)
 
 }
 
+bool move_list_compare(pair<int, moves> t1, pair<int, moves> t2)
+{
+    return t1.first>t2.first;
+}
+
 //Minimax part for maximizing player
 int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
 {
@@ -342,53 +347,84 @@ int EngineAI::maximize(int depth, int max_depth, int alpha, int beta, int extra)
         {
             int max_here = -100000000;
 
-            //Normal minimax with alpha - beta pruning
+
+            //Create move list
+            vector<pair<int, moves> > move_list;
             for(int x0=0;x0<8;x0++)
+            {
                 for(int y0=0;y0<8;y0++)
-                    for(int x1=0;x1<8;x1++)
-                        for(int y1=0;y1<8;y1++)
-                            if(board_matrix[x0][y0]<0)
+                {
+                    if(board_matrix[x0][y0]<0)
+                    {
+                        for(int x1=0;x1<8;x1++)
+                        {
+                            for(int y1=0;y1<8;y1++)
+                            {
                                 if(IsValidMove(x0,y0,x1,y1))
                                 {
                                     //Do move
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                    if(prev_1 >= 9)
-                                    {
-                                        pieces_lost1[5]++;
-                                        pieces_lost1[prev_1 - 9]++;
-                                    }
-                                    else if(prev_1 == -7)
-                                        castled2 = true;
-                                    else if(prev_1 == -8)
-                                        pieces_lost1[1]++;
-                                    else
-                                        pieces_lost1[prev_1]++;
-
-                                    int value_evaluated = minimize(depth+1, max_depth, alpha, beta, extra);
-
-                                    max_here = max(value_evaluated, max_here);
-                                    alpha = max(max_here, alpha);
+                                    move_list.push_back(make_pair(prev_1, moves(x0, y0, x1, y1)));
 
                                     //Undo move
-                                    if(prev_1 >= 9)
-                                    {
-                                        pieces_lost1[5]--;
-                                        pieces_lost1[prev_1-9]--;
-                                    }
-                                    else if(prev_1 == -7)
-                                        castled2 = false;
-                                    else if(prev_1 == -8)
-                                        pieces_lost1[1]--;
-                                    else
-                                        pieces_lost1[prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
-
-                                    if(beta<=alpha)
-                                            return max_here;
-
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            sort(move_list.begin(), move_list.end(), move_list_compare);
+
+            for(vector<pair<int, moves> >::iterator it = move_list.begin();it!=move_list.end();it++)
+            {
+                int x0 = (it->second).x0;
+                int y0 = (it->second).y0;
+                int x1 = (it->second).x1;
+                int y1 = (it->second).y1;
+
+                //Do move
+                int prev_0 = board_matrix[x0][y0];
+                int prev_1 = MakeMove(x0, y0, x1, y1);
+
+                if(prev_1 >= 9)
+                {
+                    pieces_lost1[5]++;
+                    pieces_lost1[prev_1 - 9]++;
+                }
+                else if(prev_1 == -7)
+                    castled2 = true;
+                else if(prev_1 == -8)
+                    pieces_lost1[1]++;
+                else
+                    pieces_lost1[prev_1]++;
+
+                int value_evaluated = minimize(depth+1, max_depth, alpha, beta, extra);
+
+                max_here = max(value_evaluated, max_here);
+                alpha = max(max_here, alpha);
+
+                //Undo move
+                if(prev_1 >= 9)
+                {
+                    pieces_lost1[5]--;
+                    pieces_lost1[prev_1-9]--;
+                }
+                else if(prev_1 == -7)
+                    castled2 = false;
+                else if(prev_1 == -8)
+                    pieces_lost1[1]--;
+                else
+                    pieces_lost1[prev_1]--;
+                UndoMove(prev_0, prev_1, x0, y0, x1, y1);
+
+                if(beta<=alpha)
+                        return max_here;
+            }
+
             return max_here;
         }
     }
@@ -425,54 +461,87 @@ int EngineAI::minimize(int depth, int max_depth, int alpha, int beta, int extra)
         else
         {
             int min_here = 100000000;
+
+            //Create move list
+            vector<pair<int, moves> > move_list;
             for(int x0=0;x0<8;x0++)
+            {
                 for(int y0=0;y0<8;y0++)
-                    for(int x1=0;x1<8;x1++)
-                        for(int y1=0;y1<8;y1++)
-                            if(board_matrix[x0][y0]>0)
+                {
+                    if(board_matrix[x0][y0]>0)
+                    {
+                        for(int x1=0;x1<8;x1++)
+                        {
+                            for(int y1=0;y1<8;y1++)
+                            {
                                 if(IsValidMove(x0,y0,x1,y1))
                                 {
-                                      //Do move
+                                    //Do move
                                     int prev_0 = board_matrix[x0][y0];
                                     int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                    if(prev_1 <= -9)
-                                    {
-                                        pieces_lost2[5]++;
-                                        pieces_lost2[-prev_1-9]++;
-                                    }
-                                    else if(prev_1 == 7)
-                                        castled1 = true;
-                                    else if(prev_1 == 8)
-                                        pieces_lost2[1]++;
-                                    else
-                                        pieces_lost2[-prev_1]++;
-
-                                    int value_evaluated = maximize(depth+1, max_depth, alpha, beta, extra);
-
-
-                                    min_here = min(value_evaluated, min_here);
-                                    beta = min(min_here, beta);
+                                    move_list.push_back(make_pair(prev_1, moves(x0, y0, x1, y1)));
 
                                     //Undo move
-                                    if(prev_1 <= -9)
-                                    {
-                                        pieces_lost2[5]--;
-                                        pieces_lost2[-prev_1 - 9]--;
-                                    }
-                                    else if(prev_1 == 7)
-                                        castled1 = false;
-                                    else if(prev_1 == 8)
-                                        pieces_lost2[1]--;
-                                    else
-                                        pieces_lost2[-prev_1]--;
                                     UndoMove(prev_0, prev_1, x0, y0, x1, y1);
-
-
-                                    if(beta<=alpha)
-                                        return min_here;
-
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            sort(move_list.begin(), move_list.end(), move_list_compare);
+
+            for(vector<pair<int, moves> >::iterator it = move_list.begin();it!=move_list.end();it++)
+            {
+
+                int x0 = (it->second).x0;
+                int y0 = (it->second).y0;
+                int x1 = (it->second).x1;
+                int y1 = (it->second).y1;
+                //Do move
+                int prev_0 = board_matrix[x0][y0];
+                int prev_1 = MakeMove(x0, y0, x1, y1);
+
+                if(prev_1 <= -9)
+                {
+                    pieces_lost2[5]++;
+                    pieces_lost2[-prev_1-9]++;
+                }
+                else if(prev_1 == 7)
+                    castled1 = true;
+                else if(prev_1 == 8)
+                    pieces_lost2[1]++;
+                else
+                    pieces_lost2[-prev_1]++;
+
+                int value_evaluated = maximize(depth+1, max_depth, alpha, beta, extra);
+
+
+                min_here = min(value_evaluated, min_here);
+                beta = min(min_here, beta);
+
+                //Undo move
+                if(prev_1 <= -9)
+                {
+                    pieces_lost2[5]--;
+                    pieces_lost2[-prev_1 - 9]--;
+                }
+                else if(prev_1 == 7)
+                    castled1 = false;
+                else if(prev_1 == 8)
+                    pieces_lost2[1]--;
+                else
+                    pieces_lost2[-prev_1]--;
+                UndoMove(prev_0, prev_1, x0, y0, x1, y1);
+
+
+                if(beta<=alpha)
+                    return min_here;
+
+            }
+
             return min_here;
         }
     }
@@ -506,59 +575,89 @@ moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
     if (!(IsCheckmate2()) && !(IsStalemate1()))
     {
         int max_here = -100000000;
+
+        //Create move list
+        vector<pair<int, moves> > move_list;
         for(int x0=0;x0<8;x0++)
+        {
             for(int y0=0;y0<8;y0++)
             {
-                for(int x1=0;x1<8;x1++)
-                    for(int y1=0;y1<8;y1++)
-                        if(board_matrix[x0][y0]<0)
+                if(board_matrix[x0][y0]<0)
+                {
+                    for(int x1=0;x1<8;x1++)
+                    {
+                        for(int y1=0;y1<8;y1++)
+                        {
                             if(IsValidMove(x0,y0,x1,y1))
                             {
                                 //Do move
                                 int prev_0 = board_matrix[x0][y0];
                                 int prev_1 = MakeMove(x0, y0, x1, y1);
 
-                                if(prev_1 >= 9)
-                                {
-                                    pieces_lost1[5]++;
-                                    pieces_lost1[prev_1-9]++;
-                                }
-                                else if(prev_1 == -7)
-                                    castled2 = true;
-                                else if(prev_1 == -8)
-                                    pieces_lost1[1]++;
-                                else
-                                    pieces_lost1[prev_1]++;
-
-                                int value_evaluated = minimize(2, max_depth, alpha, beta, 0);
-
-                                if(value_evaluated > max_here)
-                                {
-                                    max_here = value_evaluated;
-                                    result.x0 = x0;
-                                    result.y0 = y0;
-                                    result.x1 = x1;
-                                    result.y1 = y1;
-                                }
-                                alpha = max(max_here, alpha);
+                                move_list.push_back(make_pair(prev_1, moves(x0, y0, x1, y1)));
 
                                 //Undo move
-                                if(prev_1 >= 9)
-                                {
-                                    pieces_lost1[5]--;
-                                    pieces_lost1[prev_1 - 9]--;
-                                }
-                                else if(prev_1 == -7)
-                                    castled2 = false;
-                                else if(prev_1 == -8)
-                                    pieces_lost1[1]--;
-                                else
-                                    pieces_lost1[prev_1]--;
-
                                 UndoMove(prev_0, prev_1, x0, y0, x1, y1);
-
                             }
+                        }
+                    }
+                }
             }
+        }
+
+        sort(move_list.begin(), move_list.end(), move_list_compare);
+
+        for(vector<pair<int, moves> >::iterator it = move_list.begin();it!=move_list.end();it++)
+        {
+            int x0 = (it->second).x0;
+            int y0 = (it->second).y0;
+            int x1 = (it->second).x1;
+            int y1 = (it->second).y1;
+
+            //Do move
+            int prev_0 = board_matrix[x0][y0];
+            int prev_1 = MakeMove(x0, y0, x1, y1);
+
+            if(prev_1 >= 9)
+            {
+                pieces_lost1[5]++;
+                pieces_lost1[prev_1-9]++;
+            }
+            else if(prev_1 == -7)
+                castled2 = true;
+            else if(prev_1 == -8)
+                pieces_lost1[1]++;
+            else
+                pieces_lost1[prev_1]++;
+
+            int value_evaluated = minimize(2, max_depth, alpha, beta, 0);
+
+            if(value_evaluated > max_here)
+            {
+                max_here = value_evaluated;
+                result.x0 = x0;
+                result.y0 = y0;
+                result.x1 = x1;
+                result.y1 = y1;
+            }
+            alpha = max(max_here, alpha);
+
+            //Undo move
+            if(prev_1 >= 9)
+            {
+                pieces_lost1[5]--;
+                pieces_lost1[prev_1 - 9]--;
+            }
+            else if(prev_1 == -7)
+                castled2 = false;
+            else if(prev_1 == -8)
+                pieces_lost1[1]--;
+            else
+                pieces_lost1[prev_1]--;
+
+            UndoMove(prev_0, prev_1, x0, y0, x1, y1);
+        }
+
     }
 
     return result;
