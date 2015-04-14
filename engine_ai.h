@@ -28,8 +28,8 @@ private:
     int EvaluateFunction();
 
     float quies_factor;
-    bool castled1 = false;
-    bool castled2 = false;
+    bool castled1;
+    bool castled2;
 
     int pieces_lost1[7];
     int pieces_lost2[7];
@@ -42,11 +42,11 @@ private:
 
     int max_d;
     moves best_move;
-    bool modified = false;
+    bool modified;
 
     static long unsigned int __stdcall AIThread(void *input);
 public:
-    EngineAI(Board board):Board(board){}
+    EngineAI(Board board):Board(board){ castled1 = false; castled2 = false; modified = false;}
     moves GetBestMove(int level = AI_EASY);
     void PrintInfo();
 
