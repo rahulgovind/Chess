@@ -24,29 +24,33 @@ Engine::Engine(bool AI_mode, int difficulty):Board()
 
 //Engine constructor used for
 //reconstructing old game
-Engine::Engine(bool AI_mode, string fname)
+Engine::Engine(string fname, bool AI_mode, int difficulty)
 {
     try
     {
-        int x0, y0, x1, y1;
+        int x0, y0, x1, y1, pawn_promo;
         Engine temp(false);
         vector<moves> redo_moves;
         redo_moves.clear();
+        vector<int> pawn_promos;
         ifstream dbg(fname.c_str());
         while(true)
         {
-            dbg>>x0>>y0>>x1>>y1;
+            dbg>>x0>>y0>>x1>>y1>>pawn_promo;
             if(dbg.eof())
                 break;
-            if(x0>=0 && x0<8 && y0>=0 && y0<8 && x1>=0 && x1<8 && y1>=0 && y1<8)
+            if(x0>=0 && x0<8 && y0>=0 && y0<8 && x1>=0 && x1<8 && y1>=0 && y1<8 && pawn_promo>=0 && pawn_promo<=3)
+            {
                 redo_moves.push_back(moves(x0, y0,x1, y1));
+                pawn_promos.push_back(pawn_promo);
+            }
         }
 
         int length = redo_moves.size();
         int i=0;
         for(vector<moves>::iterator it = redo_moves.begin();i<length-length%2;++it, ++i)
         {
-            temp.ProcessInput(it->x0, it->y0, it->x1, it->y1);
+            temp.ProcessInput(it->x0, it->y0, it->x1, it->y1, pawn_promos[i]);
         }
         *this = temp;
         this->ai_mode = AI_mode;
@@ -55,7 +59,7 @@ Engine::Engine(bool AI_mode, string fname)
         if(length%2==1)
         {
             moves last_move = redo_moves.back();
-            this->ProcessInput(last_move.x0, last_move.y0, last_move.x1, last_move.y1);
+            this->ProcessInput(last_move.x0, last_move.y0, last_move.x1, last_move.y1, pawn_promos.back());
         }
 
         dbg.close();
@@ -105,7 +109,7 @@ void Engine::ProcessInput(int x0, int y0, int x1, int y1, int pawn_promo)
                         dbg.open("debug.dat", ios::trunc);
                     else
                         dbg.open("debug.dat", ios::app);
-                    dbg<<x0<<"\t"<<y0<<"\t"<<x1<<"\t"<<y1<<"\n";
+                    dbg<<x0<<"\t"<<y0<<"\t"<<x1<<"\t"<<y1<<"\t"<<pawn_promo<<"\n";
                     dbg.close();
                 }
                 catch(...)
