@@ -1,9 +1,17 @@
 #include "Chess2D.h"
 #include <ctime>
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR x,int y)
+int main(int argc, char **argv)
 {
-    Chess2D game;
-    game.StartGame();
-
+    if(argc==1)
+    {
+        Chess2D game;
+        game.StartGame();
+    }
+    else if(argc==2)
+    {
+        cout<<argv[1]<<endl;
+        Chess2D game;
+        game.StartGame(string(argv[1]));
+    }
 }

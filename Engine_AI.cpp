@@ -572,7 +572,7 @@ moves EngineAI::minimax_base(int max_depth, int alpha, int beta)
     }
 
     moves result{0,0,0,0};
-    if (!(IsCheckmate2()) && !(IsStalemate1()))
+    if (!(IsCheckmate2()) && !(IsStalemate2()))
     {
         int max_here = -100000000;
 

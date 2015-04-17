@@ -137,12 +137,14 @@ private:
     static bool single_player_mode;
     static int display_status;
 
+    string debug_file;
+
     static vector<ImageMenu*> menu;
     int MainLoop(GLFWwindow*);
 public:
     Chess2D(int width = 800 ,int height = 600,int boardwidth = 600,int boardheight = 600);
 
-    int StartGame();
+    int StartGame(string fdebug = "");
 
     ~Chess2D();
 };
@@ -446,9 +448,19 @@ Chess2D::Chess2D(int width, int height, int boardwidth, int boardheight)
     }
 }
 
-int Chess2D::StartGame()
+int Chess2D::StartGame(string fdebug)
 {
-    display_status = START_WINDOW;
+
+    if(fdebug.size()==0)
+    {
+        display_status = START_WINDOW;
+    }
+    else
+    {
+        delete engine;
+        engine = new Engine(fdebug, true, AI_EASY);
+        display_status = PLAY_WINDOW;
+    }
 
     //Show window and start game
     glfwShowWindow(window);
@@ -755,6 +767,7 @@ void Chess2D::ProcessMouseInput(GLFWwindow *window, int button,int action,int mo
             case START_WINDOW:
             {
                 int result = menu[0]->ProcessInput(2*x/window_width-1.0f, 1.0f-2*y/window_height);
+
                 if(result==START_WINDOW_ONE_PLAYER_EASY)
                 {
                     single_player_mode = true;

@@ -24,7 +24,7 @@ private:
     static long unsigned int __stdcall AIThread(void*);
 public:
     Engine(bool AI_mode, int difficulty=1);
-    Engine(bool, string);
+    Engine(string fname, bool AI_mode, int difficulty = 1);
     int GetGameStatus();
     int GetCurrentPlayer();
     int GetPiece(int x, int y);
