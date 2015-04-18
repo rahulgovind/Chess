@@ -1,7 +1,7 @@
 #Chess
 CS 101 Project
 
--System requirements:
+- System requirements:
 
 	Main requirements:
 	Dependencies: OpenGL API Version 3.2 or higher
@@ -22,31 +22,31 @@ CS 101 Project
 
 - To make MAKEFILE and compile separately
 	
-	-For making MAKEFILE
+	- For making MAKEFILE
 		- Make a new folder
 		- Run cmake -G "MinGW Makefiles" from this folder
 		( Make sure that MinGW and CMake directories are present in the PATH)
 
-	-For compiling
-		-Run mingw32-make from the new folder
+	- For compiling
+		- Run mingw32-make from the new folder
 
 - Function of each code file 
 	The functions performed by the code in each of the code files is given below.
-	-main.cpp - Arguments passed to program checked here and the Chess window is loaded.
-	-Chess2D.h - Change window settings and load it, load graphics, and process keyboard and mouse input.
-	-board.h and Board.cpp - Basic validation of moves and save positions of all chess pieces
-	-engine.h and Engine.cpp - Provide interface between the front end, the board and the AI
-	-engineAI.h and EngineAI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
-	-image_loader.h and image_loader.cpp - Loads BMP image into memory
-	-gl.h and gl.cpp - Custom GL Library to load shaders, text and menus.
-	-shader_source.h - GLSL code required for OpenGL Shader
+	- main.cpp - Arguments passed to program checked here and the Chess window is loaded.
+	- Chess2D.h - Change window settings and load it, load graphics, and process keyboard and mouse input.
+	- board.h and Board.cpp - Basic validation of moves and save positions of all chess pieces
+	- engine.h and Engine.cpp - Provide interface between the front end, the board and the AI
+	- engineAI.h and EngineAI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
+	- image_loader.h and image_loader.cpp - Loads BMP image into memory
+	- gl.h and gl.cpp - Custom GL Library to load shaders, text and menus.
+	- shader_source.h - GLSL code required for OpenGL Shader
 	
 	
 - Other folders
-	-images - Contains all the necessary images for the graphics
-	-dlls - Contains the necessary dlls to run the executable
-	-include - Contains the header files of the dependencies
-	-lib - Contains the precompiled binaries required for linking 
+	- images - Contains all the necessary images for the graphics
+	- dlls - Contains the necessary dlls to run the executable
+	- include - Contains the header files of the dependencies
+	- lib - Contains the precompiled binaries required for linking 
 	
 	
 	
