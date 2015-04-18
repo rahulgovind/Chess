@@ -2,6 +2,7 @@
 CS 101 Project
 
 - System requirements:
+
 	Main requirements:
 	Dependencies: OpenGL API Version 3.2 or higher
 	Hard Disk: 20 MB of free hard disk space
@@ -40,7 +41,7 @@ CS 101 Project
 	
 	- engine.h and Engine.cpp - Provide interface between the front end, the board and the AI
 	
-	- engine)ai.h and Engine_AI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
+	- engine_ai.h and Engine_AI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
 	
 	- image_loader.h and image_loader.cpp - Loads BMP image into memory
 	
