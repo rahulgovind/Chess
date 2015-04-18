@@ -2,7 +2,6 @@
 CS 101 Project
 
 - System requirements:
-
 	Main requirements:
 	Dependencies: OpenGL API Version 3.2 or higher
 	Hard Disk: 20 MB of free hard disk space
@@ -32,20 +31,34 @@ CS 101 Project
 
 - Function of each code file 
 	The functions performed by the code in each of the code files is given below.
+	
 	- main.cpp - Arguments passed to program checked here and the Chess window is loaded.
+	
 	- Chess2D.h - Change window settings and load it, load graphics, and process keyboard and mouse input.
+	
 	- board.h and Board.cpp - Basic validation of moves and save positions of all chess pieces
+	
 	- engine.h and Engine.cpp - Provide interface between the front end, the board and the AI
-	- engineAI.h and EngineAI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
+	
+	- engine)ai.h and Engine_AI.cpp - Predict the best possible move for the computer i.e. implementation of Minimax and the necessary evaluation functions
+	
 	- image_loader.h and image_loader.cpp - Loads BMP image into memory
+	
 	- gl.h and gl.cpp - Custom GL Library to load shaders, text and menus.
+	
 	- shader_source.h - GLSL code required for OpenGL Shader
 	
+	- CMakeLists.txt - Instructions for making MAKEFILE
+	
+	- compile.bat - Automate the process to build the final executable
 	
 - Other folders
 	- images - Contains all the necessary images for the graphics
+	
 	- dlls - Contains the necessary dlls to run the executable
+	
 	- include - Contains the header files of the dependencies
+	
 	- lib - Contains the precompiled binaries required for linking 
 	
 	
